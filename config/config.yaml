@@ -1,0 +1,66 @@
+# Personalized Agentic Assistant Configuration
+
+agent:
+  # LLM Provider Configuration
+  use_openrouter: true  # Set to true to use OpenRouter instead of OpenAI
+  
+  # Model selection
+  # For OpenAI: "gpt-4", "gpt-3.5-turbo"
+  # For OpenRouter: "anthropic/claude-3-sonnet", "openai/gpt-4", "meta-llama/llama-3-70b-instruct"
+  model: "openai/gpt-4"
+  
+  # Optional: Custom OpenRouter base URL (leave empty for default)
+  openrouter_base_url: "https://openrouter.ai/api/v1"
+  
+  temperature: 0.7
+  max_iterations: 10
+  timeout_seconds: 120
+  retry_attempts: 3
+
+speech:
+  recognition_engine: "google"  # Options: google, sphinx
+  tts_engine: "pyttsx3"
+  language: "en-US"
+  rate: 150  # Words per minute
+  volume: 0.9
+
+location:
+  use_gps: true
+  fallback_location: "New York, NY"
+  radius_km: 5  # Search radius for nearby places
+
+tools:
+  enabled:
+    - weather
+    - uber
+    - zomato
+    - location
+  
+  uber:
+    client_id: ""
+    deep_link_base: "uber://"
+  
+  zomato:
+    base_url: "https://developers.zomato.com/api/v2.1"
+    entity_type: "city"
+  
+  weather:
+    api_provider: "openweathermap"
+    units: "metric"  # Options: metric, imperial
+
+monitoring:
+  langsmith_enabled: true
+  langsmith_project: "personalized-agentic-assistant"
+  log_level: "INFO"
+  log_file: "logs/agent.log"
+  log_rotation: "10 MB"
+
+user_context:
+  persist_preferences: true
+  preferences_file: "data/user_preferences.json"
+  history_limit: 100
+
+security:
+  validate_api_keys: true
+  sanitize_inputs: true
+  max_request_size: 1024  # characters
