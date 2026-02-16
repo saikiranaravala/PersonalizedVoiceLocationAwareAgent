@@ -3,7 +3,7 @@
 import os
 from typing import Any, Dict, List, Optional
 
-from langchain.agents import AgentExecutor, create_openai_functions_agent
+from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.memory import ConversationBufferMemory
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI
@@ -62,10 +62,10 @@ class AgenticAssistant:
         current_location = self.location_service.get_current_location()
         self.context_manager.set_location(current_location)
         
-        # Initialize tools
+        # Initialize tools FIRST (before LLM)
         self.tools = self._initialize_tools()
         
-        # Initialize LLM
+        # Initialize LLM (can now bind tools if needed)
         self.llm = self._initialize_llm()
         
         # Initialize agent
@@ -155,6 +155,14 @@ class AgenticAssistant:
             )
             logger.info(f"Initialized LLM via OpenAI: {model_name}")
         
+        # Bind tools to LLM if it supports tool calling
+        try:
+            # This ensures the LLM knows about available tools
+            llm = llm.bind_tools(self.tools) if hasattr(self, 'tools') and self.tools else llm
+            logger.info("Tools bound to LLM successfully")
+        except Exception as e:
+            logger.warning(f"Could not bind tools to LLM: {e}. Continuing without tool binding.")
+        
         return llm
 
     def _initialize_agent(self) -> AgentExecutor:
@@ -174,8 +182,8 @@ class AgenticAssistant:
             MessagesPlaceholder(variable_name="agent_scratchpad"),
         ])
         
-        # Create agent
-        agent = create_openai_functions_agent(
+        # Create agent using tool calling (not deprecated functions)
+        agent = create_tool_calling_agent(
             llm=self.llm,
             tools=self.tools,
             prompt=prompt,
