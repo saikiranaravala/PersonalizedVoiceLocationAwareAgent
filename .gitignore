@@ -77,3 +77,8 @@ Thumbs.db
 user_preferences.json
 *.wav
 *.mp3
+
+
+# UI
+ui/node_modules/
+ui/package-lock.json
