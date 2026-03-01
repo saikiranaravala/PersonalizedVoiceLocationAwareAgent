@@ -27,6 +27,7 @@ function App() {
     status: voiceStatus,
     conversation,
     isConnected,
+    isConnecting,
     error,
     startListening,
     stopListening,
@@ -92,7 +93,7 @@ function App() {
       </a>
 
       {/* Connection Status Banner */}
-      {!isConnected && (
+      {!isConnected && !isConnecting && (
         <div className="connection-banner" role="alert">
           <div className="container">
             <div className="connection-banner__content">
@@ -107,6 +108,20 @@ function App() {
               >
                 Retry
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Connecting Banner */}
+      {isConnecting && (
+        <div className="connecting-banner" role="status">
+          <div className="container">
+            <div className="connecting-banner__content">
+              <span className="connecting-banner__icon">🔄</span>
+              <span className="connecting-banner__text">
+                Connecting to backend...
+              </span>
             </div>
           </div>
         </div>

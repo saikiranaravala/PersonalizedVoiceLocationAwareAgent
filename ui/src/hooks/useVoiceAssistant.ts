@@ -34,7 +34,9 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasConnectedOnce, setHasConnectedOnce] = useState(false);
 
   const wsClient = useRef<WebSocketClient | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -47,6 +49,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     if (!autoConnect) return;
 
     console.log('[Voice Assistant] Initializing WebSocket...');
+    setIsConnecting(true);
     
     wsClient.current = new WebSocketClient(backendUrl, sessionId);
 
@@ -54,6 +57,8 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
       console.log('[Voice Assistant] Connected to backend');
       console.log('[Voice Assistant] WebSocket ready state:', wsClient.current?.isConnected());
       setIsConnected(true);
+      setIsConnecting(false);
+      setHasConnectedOnce(true);
       setError(null);
     };
 
@@ -61,12 +66,26 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
       console.log('[Voice Assistant] Disconnected from backend');
       console.log('[Voice Assistant] WebSocket ready state:', wsClient.current?.isConnected());
       setIsConnected(false);
+      setIsConnecting(false);
     };
 
     wsClient.current.onError = (error) => {
       console.error('[Voice Assistant] Connection error:', error);
-      setError('Failed to connect to backend. Make sure the server is running on port 8000.');
+      
+      // Only show error if we've never connected, or if we had a connection that dropped
+      if (hasConnectedOnce) {
+        setError('Connection lost. Attempting to reconnect...');
+      } else {
+        // First connection attempt - show user-friendly message after a delay
+        setTimeout(() => {
+          if (!wsClient.current?.isConnected()) {
+            setError('Failed to connect to backend. Make sure the server is running on port 8000.');
+          }
+        }, 2000); // Wait 2 seconds before showing error
+      }
+      
       setIsConnected(false);
+      setIsConnecting(false);
     };
 
     wsClient.current.onMessage = handleBackendMessage;
@@ -78,7 +97,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
         wsClient.current.disconnect();
       }
     };
-  }, [backendUrl, sessionId, autoConnect]);
+  }, [backendUrl, sessionId, autoConnect, hasConnectedOnce]);
 
   /**
    * Initialize Speech Recognition (Web Speech API)
@@ -452,6 +471,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     status,
     conversation,
     isConnected,
+    isConnecting,
     error,
 
     // Actions

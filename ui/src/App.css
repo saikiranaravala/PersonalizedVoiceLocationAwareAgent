@@ -16,6 +16,7 @@
    ======================================== */
 
 .connection-banner,
+.connecting-banner,
 .error-banner {
   background-color: var(--color-warning-light);
   border-bottom: 1px solid var(--color-warning-500);
@@ -26,12 +27,18 @@
   animation: slideDown 0.3s var(--ease-out);
 }
 
+.connecting-banner {
+  background-color: #e3f2fd;
+  border-bottom-color: #2196f3;
+}
+
 .error-banner {
   background-color: var(--color-error-light);
   border-bottom-color: var(--color-error-500);
 }
 
 .connection-banner__content,
+.connecting-banner__content,
 .error-banner__content {
   display: flex;
   align-items: center;
@@ -40,12 +47,18 @@
 }
 
 .connection-banner__icon,
+.connecting-banner__icon,
 .error-banner__icon {
   font-size: var(--text-lg);
   line-height: 1;
 }
 
+.connecting-banner__icon {
+  animation: spin 1s linear infinite;
+}
+
 .connection-banner__text,
+.connecting-banner__text,
 .error-banner__text {
   flex: 1;
   color: var(--color-neutral-800);
@@ -67,6 +80,15 @@
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 

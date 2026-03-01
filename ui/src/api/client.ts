@@ -26,6 +26,7 @@ export class WebSocketClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private hasConnectedOnce = false;
   
   // Event handlers
   public onMessage: (message: Message) => void = () => {};
@@ -51,6 +52,7 @@ export class WebSocketClient {
       this.ws.onopen = () => {
         console.log('[WebSocket] Connected successfully');
         this.reconnectAttempts = 0;
+        this.hasConnectedOnce = true;
         this.onOpen();
       };
 
@@ -65,8 +67,15 @@ export class WebSocketClient {
       };
 
       this.ws.onerror = (error) => {
-        console.error('[WebSocket] Error:', error);
-        this.onError(error);
+        // Only log errors if we've successfully connected before
+        // This suppresses expected errors during initial connection attempts
+        if (this.hasConnectedOnce) {
+          console.error('[WebSocket] Error:', error);
+          this.onError(error);
+        } else {
+          // First connection - just log info, not error
+          console.log('[WebSocket] Initial connection attempt in progress...');
+        }
       };
 
       this.ws.onclose = () => {
