@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import VoiceButton from './components/voice/VoiceButton/VoiceButton';
 import Button from './components/core/Button/Button';
 import { useVoiceAssistant } from './hooks/useVoiceAssistant';
@@ -31,6 +31,7 @@ function App() {
     error,
     startListening,
     stopListening,
+    stopSpeaking,
     sendTextMessage,
     clearConversation,
     reconnect,
@@ -61,6 +62,20 @@ function App() {
     console.log('[App] Voice button released - stopping listening');
     stopListening();
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Escape key stops speaking
+      if (e.key === 'Escape' && voiceStatus === 'speaking') {
+        console.log('[App] Escape pressed - stopping speech');
+        stopSpeaking();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [voiceStatus, stopSpeaking]);
 
   const cycleTheme = () => {
     const themes: Theme[] = ['light', 'dark', 'high-contrast'];
@@ -241,7 +256,7 @@ function App() {
               <p className="voice-instruction voice-instruction--active">
                 {voiceStatus === 'listening' && 'Listening... Release when done'}
                 {voiceStatus === 'processing' && 'Processing your request...'}
-                {voiceStatus === 'speaking' && 'Speaking response...'}
+                {voiceStatus === 'speaking' && 'Speaking response... (Press Esc to stop)'}
                 {voiceStatus === 'error' && 'Error occurred'}
               </p>
             )}
@@ -264,6 +279,18 @@ function App() {
                 style={{ marginTop: 'var(--space-4)' }}
               >
                 Stop & Send
+              </Button>
+            )}
+
+            {/* Stop speaking button when assistant is speaking */}
+            {voiceStatus === 'speaking' && (
+              <Button
+                variant="secondary"
+                size="base"
+                onClick={stopSpeaking}
+                style={{ marginTop: 'var(--space-4)' }}
+              >
+                🔇 Stop Speaking
               </Button>
             )}
           </div>
