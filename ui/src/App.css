@@ -12,6 +12,85 @@
 }
 
 /* ========================================
+   CONNECTION STATUS & ERROR BANNERS
+   ======================================== */
+
+.connection-banner,
+.error-banner {
+  background-color: var(--color-warning-light);
+  border-bottom: 1px solid var(--color-warning-500);
+  padding: var(--space-3) 0;
+  position: sticky;
+  top: 0;
+  z-index: calc(var(--z-sticky) + 1);
+  animation: slideDown 0.3s var(--ease-out);
+}
+
+.error-banner {
+  background-color: var(--color-error-light);
+  border-bottom-color: var(--color-error-500);
+}
+
+.connection-banner__content,
+.error-banner__content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.connection-banner__icon,
+.error-banner__icon {
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+
+.connection-banner__text,
+.error-banner__text {
+  flex: 1;
+  color: var(--color-neutral-800);
+}
+
+.connection-banner__text code {
+  background-color: var(--color-neutral-200);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Connection Indicator Dot */
+.connection-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-success-500);
+  border-radius: 50%;
+  margin-left: var(--space-2);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ========================================
    HEADER
    ======================================== */
 
@@ -272,8 +351,35 @@
 
 .voice-control {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   margin-bottom: var(--space-6);
+}
+
+/* Voice instruction text */
+.voice-instruction {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+  text-align: center;
+  font-weight: var(--font-medium);
+  transition: all var(--duration-base) var(--ease-out);
+}
+
+.voice-instruction--active {
+  color: var(--color-primary-500);
+  font-weight: var(--font-semibold);
+  animation: instruction-pulse 2s infinite;
+}
+
+@keyframes instruction-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .quick-actions {

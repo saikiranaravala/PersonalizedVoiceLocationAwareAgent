@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import VoiceButton from './components/voice/VoiceButton/VoiceButton';
 import Button from './components/core/Button/Button';
+import { useVoiceAssistant } from './hooks/useVoiceAssistant';
 import './styles/tokens.css';
 import './styles/global.css';
 import './App.css';
@@ -8,22 +9,36 @@ import './App.css';
 /**
  * Main App Component
  * 
- * Demonstrates the complete voice-first UI
+ * Voice-first AI Assistant UI connected to backend
+ * - Real-time voice interaction
+ * - WebSocket communication
+ * - Speech recognition & synthesis
  * - Theme switching
- * - Voice interaction
  * - Responsive layout
- * - Accessibility features
  */
 
 type Theme = 'light' | 'dark' | 'high-contrast';
-type VoiceStatus = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
 
 function App() {
   const [theme, setTheme] = useState<Theme>('light');
-  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>('idle');
-  const [conversation, setConversation] = useState<
-    Array<{ role: 'user' | 'assistant'; text: string; timestamp: Date }>
-  >([]);
+
+  // Connect to backend voice assistant
+  const {
+    status: voiceStatus,
+    conversation,
+    isConnected,
+    error,
+    startListening,
+    stopListening,
+    sendTextMessage,
+    clearConversation,
+    reconnect,
+  } = useVoiceAssistant({
+    backendUrl: 'ws://localhost:8000',
+    autoConnect: true,
+    enableSpeechRecognition: true,
+    enableSpeechSynthesis: true,
+  });
 
   // Apply theme to document
   React.useEffect(() => {
@@ -32,38 +47,18 @@ function App() {
 
   // Handle voice button press
   const handleVoicePress = () => {
-    setVoiceStatus('listening');
-    
-    // Simulate voice recognition
-    setTimeout(() => {
-      setVoiceStatus('processing');
-      
-      // Add user message
-      const userMessage = "What's the weather like?";
-      setConversation(prev => [
-        ...prev,
-        { role: 'user', text: userMessage, timestamp: new Date() },
-      ]);
-      
-      setTimeout(() => {
-        setVoiceStatus('speaking');
-        
-        // Add assistant response
-        const assistantMessage = "Current weather in New York: Clear sky, 72°F";
-        setConversation(prev => [
-          ...prev,
-          { role: 'assistant', text: assistantMessage, timestamp: new Date() },
-        ]);
-        
-        setTimeout(() => {
-          setVoiceStatus('idle');
-        }, 2000);
-      }, 1500);
-    }, 2000);
+    if (!isConnected) {
+      alert('Backend not connected. Please start the backend server: python api_server.py');
+      return;
+    }
+    console.log('[App] Voice button pressed - starting listening');
+    startListening();
   };
 
   const handleVoiceRelease = () => {
-    // Handle release if needed
+    // Stop listening when button is released
+    console.log('[App] Voice button released - stopping listening');
+    stopListening();
   };
 
   const cycleTheme = () => {
@@ -73,6 +68,22 @@ function App() {
     setTheme(themes[nextIndex]);
   };
 
+  // Quick action handlers
+  const handleQuickAction = (action: string) => {
+    if (!isConnected) {
+      alert('Backend not connected. Please start the backend server.');
+      return;
+    }
+
+    const messages: Record<string, string> = {
+      weather: "What's the weather like?",
+      restaurants: "Find restaurants near me",
+      ride: "Book me a ride"
+    };
+
+    sendTextMessage(messages[action] || action);
+  };
+
   return (
     <div className="app">
       {/* Skip to main content */}
@@ -80,11 +91,47 @@ function App() {
         Skip to main content
       </a>
 
+      {/* Connection Status Banner */}
+      {!isConnected && (
+        <div className="connection-banner" role="alert">
+          <div className="container">
+            <div className="connection-banner__content">
+              <span className="connection-banner__icon">⚠️</span>
+              <span className="connection-banner__text">
+                Not connected to backend. Please start the server: <code>python api_server.py</code>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={reconnect}
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {error && (
+        <div className="error-banner" role="alert">
+          <div className="container">
+            <div className="error-banner__content">
+              <span className="error-banner__icon">❌</span>
+              <span className="error-banner__text">{error}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="app-header safe-top">
         <div className="container">
           <div className="app-header__content">
-            <h1 className="app-header__title">Voice Assistant</h1>
+            <h1 className="app-header__title">
+              Voice Assistant
+              {isConnected && <span className="connection-dot" title="Connected" />}
+            </h1>
             
             <div className="app-header__actions">
               {/* Theme switcher */}
@@ -96,13 +143,16 @@ function App() {
                 aria-label={`Current theme: ${theme}. Click to change theme`}
               />
               
-              {/* Settings */}
-              <Button
-                variant="ghost"
-                size="base"
-                iconOnly={<SettingsIcon />}
-                aria-label="Open settings"
-              />
+              {/* Clear conversation */}
+              {conversation.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="base"
+                  iconOnly={<ClearIcon />}
+                  onClick={clearConversation}
+                  aria-label="Clear conversation"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -119,10 +169,13 @@ function App() {
                   <MicrophoneIcon />
                 </div>
                 <h2 className="empty-state__title">
-                  Tap the microphone to start
+                  {isConnected ? 'Tap the microphone to start' : 'Waiting for backend connection...'}
                 </h2>
                 <p className="empty-state__description">
-                  I can help you with weather, restaurants, rides, and more
+                  {isConnected 
+                    ? 'I can help you with weather, restaurants, rides, and more'
+                    : 'Start the backend server to begin: python api_server.py'
+                  }
                 </p>
               </div>
             ) : (
@@ -159,14 +212,45 @@ function App() {
       {/* Bottom Action Area */}
       <div className="app-bottom safe-bottom">
         <div className="container">
+          {/* Voice control with instructions */}
           <div className="voice-control">
+            {/* Push-to-talk instruction */}
+            {voiceStatus === 'idle' && (
+              <p className="voice-instruction">
+                Hold to talk, release to send
+              </p>
+            )}
+            
+            {/* Status text when active */}
+            {voiceStatus !== 'idle' && (
+              <p className="voice-instruction voice-instruction--active">
+                {voiceStatus === 'listening' && 'Listening... Release when done'}
+                {voiceStatus === 'processing' && 'Processing your request...'}
+                {voiceStatus === 'speaking' && 'Speaking response...'}
+                {voiceStatus === 'error' && 'Error occurred'}
+              </p>
+            )}
+            
             <VoiceButton
               status={voiceStatus}
               onPress={handleVoicePress}
               onRelease={handleVoiceRelease}
               size="large"
               showWaveform={true}
+              disabled={!isConnected}
             />
+            
+            {/* Manual stop button when listening */}
+            {voiceStatus === 'listening' && (
+              <Button
+                variant="secondary"
+                size="base"
+                onClick={handleVoiceRelease}
+                style={{ marginTop: 'var(--space-4)' }}
+              >
+                Stop & Send
+              </Button>
+            )}
           </div>
 
           {/* Quick Actions */}
@@ -175,6 +259,8 @@ function App() {
               variant="secondary"
               size="sm"
               iconBefore={<WeatherIcon />}
+              onClick={() => handleQuickAction('weather')}
+              disabled={!isConnected}
             >
               Weather
             </Button>
@@ -182,6 +268,8 @@ function App() {
               variant="secondary"
               size="sm"
               iconBefore={<RestaurantIcon />}
+              onClick={() => handleQuickAction('restaurants')}
+              disabled={!isConnected}
             >
               Restaurants
             </Button>
@@ -189,6 +277,8 @@ function App() {
               variant="secondary"
               size="sm"
               iconBefore={<CarIcon />}
+              onClick={() => handleQuickAction('ride')}
+              disabled={!isConnected}
             >
               Ride
             </Button>
@@ -200,7 +290,7 @@ function App() {
 }
 
 // Status Indicator Component
-const StatusIndicator: React.FC<{ status: VoiceStatus }> = ({ status }) => {
+const StatusIndicator: React.FC<{ status: string }> = ({ status }) => {
   const getStatusText = () => {
     switch (status) {
       case 'listening':
@@ -240,7 +330,7 @@ const ThemeIcon = () => (
   </svg>
 );
 
-const SettingsIcon = () => (
+const ClearIcon = () => (
   <svg
     width="24"
     height="24"
@@ -251,8 +341,7 @@ const SettingsIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <circle cx="12" cy="12" r="3" />
-    <path d="M12 1v6m0 6v6m-6-6H0m6 0h6m6 0h6" />
+    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
