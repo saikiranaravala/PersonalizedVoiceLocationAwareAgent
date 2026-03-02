@@ -22,6 +22,7 @@ Context Information:
 
 Remember: You can access the user's current location and should use it to provide contextual, location-aware responses.
 """
+#ToDo: Add user greeting to line 27
 
 USER_GREETING = """Hello! I'm your personalized AI assistant. I can help you with:
 - Booking rides with Uber
