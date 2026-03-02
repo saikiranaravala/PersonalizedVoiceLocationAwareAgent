@@ -100,6 +100,34 @@ function App() {
     sendTextMessage(messages[action] || action);
   };
 
+  /**
+   * Convert URLs in text to clickable links
+   */
+  const linkifyText = (text: string) => {
+    // Regular expression to match URLs
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    
+    return parts.map((part, index) => {
+      // If this part matches a URL, make it a clickable link
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="message-link"
+          >
+            [click here to confirm and book your ride]
+          </a>
+        );
+      }
+      // Otherwise, return as plain text
+      return part;
+    });
+  };
+
   return (
     <div className="app">
       {/* Skip to main content */}
@@ -216,7 +244,7 @@ function App() {
                     className={`conversation-bubble conversation-bubble--${message.role}`}
                   >
                     <div className="conversation-bubble__content">
-                      {message.text}
+                      {linkifyText(message.text)}
                     </div>
                     <div className="conversation-bubble__timestamp">
                       {message.timestamp.toLocaleTimeString([], {

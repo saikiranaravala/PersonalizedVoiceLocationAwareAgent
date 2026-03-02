@@ -250,6 +250,43 @@
   word-wrap: break-word;
 }
 
+/* Links in conversation messages */
+.conversation-bubble__content .message-link {
+  color: inherit;
+  text-decoration: underline;
+  font-weight: var(--font-semibold);
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.conversation-bubble__content .message-link:hover {
+  opacity: 0.8;
+}
+
+.conversation-bubble__content .message-link:focus {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.conversation-bubble--assistant .message-link {
+  color: var(--color-primary-600);
+}
+
+.conversation-bubble--assistant .message-link:hover {
+  color: var(--color-primary-700);
+  opacity: 1;
+}
+
+.conversation-bubble--user .message-link {
+  color: var(--text-inverse);
+  text-decoration-color: rgba(255, 255, 255, 0.7);
+}
+
+.conversation-bubble--user .message-link:hover {
+  text-decoration-color: rgba(255, 255, 255, 1);
+}
+
 .conversation-bubble--user .conversation-bubble__content {
   background-color: var(--primary);
   color: var(--text-inverse);
