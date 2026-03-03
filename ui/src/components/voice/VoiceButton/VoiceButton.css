@@ -1,0 +1,434 @@
+/**
+ * VoiceButton Component Styles
+ * The centerpiece of voice interaction
+ */
+
+.voice-button-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* ========================================
+   MAIN BUTTON
+   ======================================== */
+
+.voice-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  background: var(--primary);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-xl);
+  transition: 
+    transform var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out),
+    background-color var(--duration-base) var(--ease-out);
+  
+  /* Prevent blue highlight on touch */
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Smooth edges */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Size variants */
+.voice-button--base {
+  width: var(--touch-xl);
+  height: var(--touch-xl);
+  border-radius: var(--radius-full);
+}
+
+.voice-button--large {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-full);
+}
+
+/* ========================================
+   BUTTON STATES
+   ======================================== */
+
+/* Hover state (desktop) */
+@media (hover: hover) {
+  .voice-button:not(:disabled):hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-2xl);
+  }
+}
+
+/* Pressed state */
+.voice-button--pressed,
+.voice-button:active:not(:disabled) {
+  transform: scale(0.95);
+  box-shadow: var(--shadow-md);
+}
+
+/* Disabled state */
+.voice-button:disabled,
+.voice-button--disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Focus state */
+.voice-button:focus-visible {
+  outline: 4px solid var(--border-focus);
+  outline-offset: 4px;
+}
+
+/* ========================================
+   STATUS VARIANTS
+   ======================================== */
+
+/* Idle state */
+.voice-button--idle {
+  background: var(--primary);
+}
+
+/* Listening state - bright and active */
+.voice-button--listening {
+  background: linear-gradient(135deg, var(--color-primary-400), var(--color-primary-600));
+  animation: voice-button-pulse 2s ease-in-out infinite;
+}
+
+/* Processing state - subtle animation */
+.voice-button--processing {
+  background: linear-gradient(135deg, var(--color-info), var(--color-primary-600));
+}
+
+/* Speaking state - gentle glow */
+.voice-button--speaking {
+  background: linear-gradient(135deg, var(--color-primary-300), var(--color-primary-500));
+  animation: voice-button-glow 1.5s ease-in-out infinite;
+}
+
+/* Error state - attention-grabbing */
+.voice-button--error {
+  background: var(--color-error);
+  animation: voice-button-shake 0.5s ease-in-out;
+}
+
+/* ========================================
+   ICON STYLING
+   ======================================== */
+
+.voice-button__icon {
+  position: relative;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--duration-base) var(--ease-spring);
+}
+
+.voice-button--large .voice-button__icon {
+  width: 44px;
+  height: 44px;
+}
+
+.voice-button__icon svg {
+  width: 100%;
+  height: 100%;
+  drop-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Icon animations for different states */
+.voice-button--listening .voice-button__icon {
+  animation: voice-icon-bounce 0.8s ease-in-out infinite;
+}
+
+.voice-button--processing .voice-button__icon {
+  animation: voice-icon-rotate 2s linear infinite;
+}
+
+.voice-button--speaking .voice-button__icon {
+  animation: voice-icon-scale 1s ease-in-out infinite;
+}
+
+/* ========================================
+   PULSE RINGS (Visual Feedback)
+   ======================================== */
+
+.voice-button__pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--primary);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.voice-button__pulse--1 {
+  animation: voice-pulse-ring 2s ease-out infinite;
+}
+
+.voice-button__pulse--2 {
+  animation: voice-pulse-ring 2s ease-out infinite 0.4s;
+}
+
+.voice-button__pulse--3 {
+  animation: voice-pulse-ring 2s ease-out infinite 0.8s;
+}
+
+/* ========================================
+   WAVEFORM VISUALIZATION
+   ======================================== */
+
+.voice-button__waveform {
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 24px;
+}
+
+.voice-button__waveform-bar {
+  width: 3px;
+  height: 4px;
+  background: var(--primary);
+  border-radius: 2px;
+  animation: voice-waveform 0.8s ease-in-out infinite;
+}
+
+/* ========================================
+   PROCESSING SPINNER
+   ======================================== */
+
+.voice-button__spinner {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: var(--text-inverse);
+  border-radius: var(--radius-full);
+  animation: voice-spinner 0.8s linear infinite;
+}
+
+/* ========================================
+   STATUS LABEL
+   ======================================== */
+
+.voice-button-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-align: center;
+  min-height: 20px;
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.voice-button--listening ~ .voice-button-label,
+.voice-button--speaking ~ .voice-button-label {
+  color: var(--primary);
+  font-weight: var(--font-semibold);
+}
+
+.voice-button--error ~ .voice-button-label {
+  color: var(--color-error);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+/* Pulse animation for button */
+@keyframes voice-button-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+/* Glow animation for speaking state */
+@keyframes voice-button-glow {
+  0%, 100% {
+    box-shadow: var(--shadow-xl);
+  }
+  50% {
+    box-shadow: 
+      var(--shadow-xl),
+      0 0 30px rgba(14, 165, 233, 0.4);
+  }
+}
+
+/* Shake animation for error */
+@keyframes voice-button-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+/* Icon bounce */
+@keyframes voice-icon-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Icon rotation */
+@keyframes voice-icon-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Icon scale */
+@keyframes voice-icon-scale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Pulse rings */
+@keyframes voice-pulse-ring {
+  0% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2);
+  }
+}
+
+/* Waveform bars */
+@keyframes voice-waveform {
+  0%, 100% {
+    height: 4px;
+  }
+  50% {
+    height: 20px;
+  }
+}
+
+/* Spinner rotation */
+@keyframes voice-spinner {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   DARK MODE ADJUSTMENTS
+   ======================================== */
+
+[data-theme="dark"] .voice-button {
+  box-shadow: 
+    var(--shadow-xl),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .voice-button--listening,
+[data-theme="dark"] .voice-button--speaking {
+  box-shadow: 
+    var(--shadow-xl),
+    0 0 30px rgba(56, 189, 248, 0.3);
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-button,
+  .voice-button__icon,
+  .voice-button__pulse,
+  .voice-button__waveform-bar,
+  .voice-button__spinner {
+    animation: none !important;
+  }
+  
+  .voice-button:hover {
+    transform: none;
+  }
+  
+  .voice-button--pressed {
+    transform: none;
+  }
+}
+
+/* ========================================
+   TOUCH OPTIMIZATION
+   ======================================== */
+
+/* Increase hit area on mobile */
+@media (max-width: 640px) {
+  .voice-button::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+  }
+}
+
+/* ========================================
+   HIGH CONTRAST MODE
+   ======================================== */
+
+@media (prefers-contrast: high) {
+  .voice-button {
+    border: 3px solid currentColor;
+  }
+  
+  .voice-button:focus-visible {
+    outline-width: 5px;
+    outline-offset: 5px;
+  }
+}
+
+/* ========================================
+   LANDSCAPE MODE (Mobile)
+   ======================================== */
+
+@media (max-width: 640px) and (orientation: landscape) {
+  .voice-button--large {
+    width: var(--touch-xl);
+    height: var(--touch-xl);
+  }
+  
+  .voice-button__waveform {
+    display: none; /* Save vertical space */
+  }
+}
