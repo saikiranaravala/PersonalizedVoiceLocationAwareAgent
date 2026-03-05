@@ -65,26 +65,43 @@ class UberTool(BaseTool):
             pickup_name = current_loc.get("address", "Current Location")
 
         # Generate Uber deep link (Universal Link format)
-        # Format: uber://?action=setPickup&pickup[latitude]=...&dropoff[latitude]=...
+        # Modern Uber web app format - uses client_id for better compatibility
         
-        # Create web-based universal link (works on mobile and desktop)
+        # URL-encode the addresses properly
+        pickup_encoded = quote(pickup_name, safe='')
+        dest_encoded = quote(destination, safe='')
+        
+        # Uber web deep link - optimized format for web browser
         deep_link = (
+            f"https://m.uber.com/looking"
+            f"?pickup-latitude={pickup_lat}"
+            f"&pickup-longitude={pickup_lon}"
+            f"&pickup-nickname={pickup_encoded}"
+            f"&dropoff-latitude={dest_lat}"
+            f"&dropoff-longitude={dest_lon}"
+            f"&dropoff-nickname={dest_encoded}"
+        )
+        
+        # Alternative: Universal Link format (for mobile app)
+        universal_link = (
             f"https://m.uber.com/ul/?action=setPickup"
             f"&pickup[latitude]={pickup_lat}"
             f"&pickup[longitude]={pickup_lon}"
-            f"&pickup[nickname]={quote(pickup_name)}"
+            f"&pickup[nickname]={pickup_encoded}"
             f"&dropoff[latitude]={dest_lat}"
             f"&dropoff[longitude]={dest_lon}"
-            f"&dropoff[nickname]={quote(destination)}"
+            f"&dropoff[nickname]={dest_encoded}"
         )
         
-        # Alternative app-based deep link
+        # App-based deep link (opens Uber app if installed)
         app_link = (
             f"uber://?action=setPickup"
             f"&pickup[latitude]={pickup_lat}"
             f"&pickup[longitude]={pickup_lon}"
+            f"&pickup[nickname]={pickup_encoded}"
             f"&dropoff[latitude]={dest_lat}"
             f"&dropoff[longitude]={dest_lon}"
+            f"&dropoff[nickname]={dest_encoded}"
         )
 
         result = {
@@ -94,13 +111,15 @@ class UberTool(BaseTool):
             "pickup_coordinates": {"latitude": pickup_lat, "longitude": pickup_lon},
             "destination": destination,
             "destination_coordinates": {"latitude": dest_lat, "longitude": dest_lon},
-            "deep_link": deep_link,
-            "app_link": app_link,
+            "deep_link": deep_link,  # Primary web link
+            "universal_link": universal_link,  # Universal link format
+            "app_link": app_link,  # App-specific link
             "message": f"Uber ride link generated from {pickup_name} to {destination}",
-            "instructions": "Click the link to open Uber app and confirm your ride."
+            "instructions": "Click the link to open Uber and confirm your ride. Pickup and dropoff locations are pre-filled."
         }
         
-        logger.info(f"Generated Uber link: {pickup_name} → {destination}")
+        logger.info(f"Generated Uber links: {pickup_name} → {destination}")
+        logger.info(f"Web link: {deep_link}")
         return result
 
     def validate_inputs(self, destination: str = None, **kwargs) -> bool:

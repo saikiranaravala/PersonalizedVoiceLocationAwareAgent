@@ -139,9 +139,9 @@ class ZomatoTool(BaseTool):
         # Sample mock data for common cuisines
         mock_restaurants = {
             "italian": [
-                {"name": "Bella Italia", "cuisine": "Italian", "rating": 4.5, "address": "123 Main St", "price_range": 3},
-                {"name": "Pasta Paradise", "cuisine": "Italian", "rating": 4.3, "address": "456 Oak Ave", "price_range": 2},
-                {"name": "Trattoria Roma", "cuisine": "Italian", "rating": 4.7, "address": "789 Elm St", "price_range": 4},
+                {"name": "Falcone's Kitchen", "cuisine": "Italian", "rating": 4.5, "address": "2901 Copperleaf Dr, Erie, PA 16506", "price_range": 3},
+                {"name": "Olive Garden Italian Restaurant", "cuisine": "Italian", "rating": 4.3, "address": "5945 Peach St, Erie, PA 16509", "price_range": 2},
+                {"name": "The Cork 1794", "cuisine": "Italian", "rating": 4.7, "address": "900 W Erie Plaza Dr, Erie, PA 16505", "price_range": 4},
             ],
             "chinese": [
                 {"name": "Golden Dragon", "cuisine": "Chinese", "rating": 4.2, "address": "321 Pine St", "price_range": 2},
@@ -149,6 +149,16 @@ class ZomatoTool(BaseTool):
                 {"name": "Dim Sum Palace", "cuisine": "Chinese", "rating": 4.6, "address": "987 Cedar Ln", "price_range": 3},
             ],
             "mexican": [
+                {"name": "El Mariachi", "cuisine": "Mexican", "rating": 4.3, "address": "147 Beach Rd", "price_range": 2},
+                {"name": "Taco Fiesta", "cuisine": "Mexican", "rating": 4.1, "address": "258 Hill St", "price_range": 1},
+                {"name": "Casa Grande", "cuisine": "Mexican", "rating": 4.5, "address": "369 Valley Dr", "price_range": 3},
+            ],
+            "indian": [
+                {"name": "El Mariachi", "cuisine": "Mexican", "rating": 4.3, "address": "147 Beach Rd", "price_range": 2},
+                {"name": "Taco Fiesta", "cuisine": "Mexican", "rating": 4.1, "address": "258 Hill St", "price_range": 1},
+                {"name": "Casa Grande", "cuisine": "Mexican", "rating": 4.5, "address": "369 Valley Dr", "price_range": 3},
+            ],
+            "thai": [
                 {"name": "El Mariachi", "cuisine": "Mexican", "rating": 4.3, "address": "147 Beach Rd", "price_range": 2},
                 {"name": "Taco Fiesta", "cuisine": "Mexican", "rating": 4.1, "address": "258 Hill St", "price_range": 1},
                 {"name": "Casa Grande", "cuisine": "Mexican", "rating": 4.5, "address": "369 Valley Dr", "price_range": 3},

@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import VoiceButton from './components/voice/VoiceButton/VoiceButton';
 import Button from './components/core/Button/Button';
 import { useVoiceAssistant } from './hooks/useVoiceAssistant';
+import { useUserProfile } from './hooks/useUserProfile';
+import { ProfileSetup } from './components/ProfileSetup/ProfileSetup';
+import { ProfileSettings } from './components/ProfileSettings/ProfileSettings';
 import './styles/tokens.css';
 import './styles/global.css';
 import './App.css';
@@ -41,6 +44,32 @@ function App() {
     enableSpeechRecognition: true,
     enableSpeechSynthesis: true,
   });
+
+  // User profile and preferences
+  const {
+    isProfileSetup,
+    profile,
+    getGreeting,
+    updateProfile,
+    addRestaurantVisit,
+    addUberTrip,
+    getUserContext,
+    resetUserData,
+  } = useUserProfile();
+
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+
+  // Show profile setup on first load if not configured
+  useEffect(() => {
+    if (!isProfileSetup) {
+      // Show setup after a brief delay for smoother UX
+      const timer = setTimeout(() => {
+        setShowProfileSetup(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isProfileSetup]);
 
   // Apply theme to document
   React.useEffect(() => {
@@ -227,7 +256,9 @@ function App() {
                   <MicrophoneIcon />
                 </div>
                 <h2 className="empty-state__title">
-                  {isConnected ? 'Tap the microphone to start' : 'Waiting for backend connection...'}
+                  {isConnected 
+                    ? (isProfileSetup ? getGreeting() : 'Tap the microphone to start')
+                    : 'Waiting for backend connection...'}
                 </h2>
                 <p className="empty-state__description">
                   {isConnected 
@@ -235,6 +266,14 @@ function App() {
                     : 'Start the backend server to begin: python api_server.py'
                   }
                 </p>
+                {isProfileSetup && profile && (
+                  <button
+                    onClick={() => setShowProfileSettings(true)}
+                    className="edit-profile-link"
+                  >
+                    Edit Profile
+                  </button>
+                )}
               </div>
             ) : (
               <div className="conversation-list">
@@ -355,6 +394,34 @@ function App() {
           </div>
         </div>
       </div>
+
+      {/* Profile Setup Modal (First time) */}
+      {showProfileSetup && !isProfileSetup && (
+        <ProfileSetup
+          onComplete={(profileData) => {
+            updateProfile(profileData);
+            setShowProfileSetup(false);
+          }}
+          onSkip={() => setShowProfileSetup(false)}
+        />
+      )}
+
+      {/* Profile Settings Modal (Edit/Reset) */}
+      {showProfileSettings && isProfileSetup && profile && (
+        <ProfileSettings
+          profile={profile}
+          onUpdate={(profileData) => {
+            updateProfile(profileData);
+          }}
+          onReset={() => {
+            resetUserData();
+            setShowProfileSettings(false);
+            // Show setup again after reset
+            setTimeout(() => setShowProfileSetup(true), 500);
+          }}
+          onClose={() => setShowProfileSettings(false)}
+        />
+      )}
     </div>
   );
 }
