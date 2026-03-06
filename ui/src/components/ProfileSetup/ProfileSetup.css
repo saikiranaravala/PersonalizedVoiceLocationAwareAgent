@@ -125,6 +125,14 @@
   color: var(--text-tertiary);
 }
 
+.form-help-text {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+  line-height: var(--leading-relaxed);
+}
+
 .form-select {
   cursor: pointer;
 }

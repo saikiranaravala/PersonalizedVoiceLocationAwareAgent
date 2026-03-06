@@ -16,6 +16,7 @@ export interface UserProfile {
   title: Title;
   
   // Location
+  address?: string;  // NEW: Complete street address (optional)
   city: string;
   state: string;
   country: string;

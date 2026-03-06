@@ -20,6 +20,7 @@ export interface UseVoiceAssistantOptions {
   autoConnect?: boolean;
   enableSpeechRecognition?: boolean;
   enableSpeechSynthesis?: boolean;
+  userProfile?: any;  // NEW: User profile data
 }
 
 export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
@@ -29,6 +30,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     autoConnect = true,
     enableSpeechRecognition = true,
     enableSpeechSynthesis = true,
+    userProfile,  // NEW: Extract user profile
   } = options;
 
   const [status, setStatus] = useState<VoiceStatus>('idle');
@@ -339,7 +341,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     console.log('[Voice Assistant] Attempting to send message:', text);
     
     if (!wsClient.current) {
-      console.error('[Voice Assistant] WebSocket client not initialized');
+      console.error('[WebSocket] Client not initialized');
       setError('WebSocket not initialized');
       setStatus('error');
       return;
@@ -347,9 +349,8 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
 
     // Check actual WebSocket state, not just the isConnected state variable
     if (!wsClient.current.isConnected()) {
-      console.error('[Voice Assistant] WebSocket not connected');
-      console.log('[Voice Assistant] isConnected state:', isConnected);
-      console.log('[Voice Assistant] Actual ws state:', wsClient.current);
+      console.error('[WebSocket] Not connected');
+      console.log('[WebSocket] isConnected state:', isConnected);
       setError('Not connected to backend. Check if server is running.');
       setStatus('error');
       setTimeout(() => {
@@ -360,12 +361,18 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     }
 
     try {
-      console.log('[Voice Assistant] Sending to backend:', text);
+      console.log('[WebSocket] Sending message to backend:', text);
+      console.log('[WebSocket] Including user profile:', userProfile);
+      console.log('[WebSocket] User agent:', navigator.userAgent);
+      
       setStatus('processing');
-      wsClient.current.sendMessage(text);
-      console.log('[Voice Assistant] Message sent successfully');
+      
+      // Send message with user profile and user agent
+      wsClient.current.sendMessage(text, userProfile, navigator.userAgent);
+      
+      console.log('[WebSocket] Message sent successfully with user context');
     } catch (error) {
-      console.error('[Voice Assistant] Failed to send message:', error);
+      console.error('[WebSocket] Failed to send message:', error);
       setError('Failed to send message to backend');
       setStatus('error');
       setTimeout(() => {
@@ -373,7 +380,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
         setError(null);
       }, 3000);
     }
-  }, [isConnected]);
+  }, [isConnected, userProfile]);  // Add userProfile as dependency
 
   /**
    * Speak text using Speech Synthesis

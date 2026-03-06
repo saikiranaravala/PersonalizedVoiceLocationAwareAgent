@@ -10,6 +10,8 @@ export interface Message {
   success?: boolean;
   intermediate_steps?: any[];
   timestamp?: number;
+  user_profile?: any;  // NEW: User profile data
+  user_agent?: string;  // NEW: Browser user agent
 }
 
 export interface ChatResponse {
@@ -112,7 +114,7 @@ export class WebSocketClient {
   /**
    * Send a chat message
    */
-  sendMessage(message: string): void {
+  sendMessage(message: string, user_profile?: any, user_agent?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.error('[WebSocket] Connection not open');
       throw new Error('WebSocket not connected');
@@ -121,7 +123,9 @@ export class WebSocketClient {
     const payload: Message = {
       type: 'chat',
       message: message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      user_profile: user_profile,  // Include user profile
+      user_agent: user_agent || navigator.userAgent  // Include user agent
     };
 
     console.log('[WebSocket] Sending:', payload);

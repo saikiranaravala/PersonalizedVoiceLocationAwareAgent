@@ -229,6 +229,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
             if message_type == "chat":
                 # Process chat message
                 user_message = data.get("message", "")
+                user_profile = data.get("user_profile")  # Extract user profile
+                user_agent = data.get("user_agent")  # Extract user agent
+                
+                print(f"Processing message: {user_message}")
+                print(f"User profile: {user_profile}")
+                print(f"User agent: {user_agent}")
                 
                 # Send "processing" status
                 await manager.send_message({
@@ -238,8 +244,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 }, session_id)
                 
                 try:
-                    # Process with assistant
-                    result = assistant.process_request(user_message)
+                    # Process with assistant (pass user context)
+                    result = assistant.process_request(
+                        user_message,
+                        user_agent=user_agent,
+                        user_profile=user_profile
+                    )
                     
                     # Extract just the text response (avoid serialization issues)
                     response_text = result.get("output", "")

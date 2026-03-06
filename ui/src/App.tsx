@@ -25,7 +25,20 @@ type Theme = 'light' | 'dark' | 'high-contrast';
 function App() {
   const [theme, setTheme] = useState<Theme>('light');
 
-  // Connect to backend voice assistant
+  // User profile and preferences (get this FIRST)
+  const {
+    isProfileSetup,
+    profile,
+    userData,
+    getGreeting,
+    updateProfile,
+    addRestaurantVisit,
+    addUberTrip,
+    getUserContext,
+    resetUserData,
+  } = useUserProfile();
+
+  // Connect to backend voice assistant (pass user profile)
   const {
     status: voiceStatus,
     conversation,
@@ -43,19 +56,8 @@ function App() {
     autoConnect: true,
     enableSpeechRecognition: true,
     enableSpeechSynthesis: true,
+    userProfile: profile,  // Pass user profile data
   });
-
-  // User profile and preferences
-  const {
-    isProfileSetup,
-    profile,
-    getGreeting,
-    updateProfile,
-    addRestaurantVisit,
-    addUberTrip,
-    getUserContext,
-    resetUserData,
-  } = useUserProfile();
 
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);

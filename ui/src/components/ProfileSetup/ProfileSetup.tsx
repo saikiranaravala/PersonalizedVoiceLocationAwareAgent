@@ -13,6 +13,7 @@ interface ProfileSetupProps {
     gender: Gender;
     age?: number;
     title?: Title;
+    address?: string;  // NEW: Complete street address
     city: string;
     state: string;
     country: string;
@@ -28,6 +29,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete, onSkip }
     gender: 'prefer-not-to-say' as Gender,
     age: '',
     customTitle: '' as Title,
+    address: '',  // NEW: Street address
     city: 'Erie',
     state: 'Pennsylvania',
     country: 'US',
@@ -50,6 +52,7 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete, onSkip }
         gender: formData.gender,
         age,
         title: formData.customTitle || undefined,
+        address: formData.address || undefined,  // NEW: Include address
         city: formData.city,
         state: formData.state,
         country: formData.country,
@@ -183,6 +186,21 @@ export const ProfileSetup: React.FC<ProfileSetupProps> = ({ onComplete, onSkip }
           {step === 3 && (
             <div className="profile-step">
               <h3 className="step-title">Where are you located?</h3>
+              
+              <div className="form-group">
+                <label htmlFor="address">Street Address (Optional)</label>
+                <input
+                  id="address"
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  placeholder="123 Main Street, Apt 4B"
+                  className="form-input"
+                />
+                <span className="form-help-text">
+                  Used for Uber pickup on desktop. Leave blank to use your city.
+                </span>
+              </div>
               
               <div className="form-group">
                 <label htmlFor="city">City *</label>

@@ -27,6 +27,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     gender: profile.gender,
     age: profile.age?.toString() || '',
     title: profile.title,
+    address: profile.address || '',  // NEW: Include address
     city: profile.city,
     state: profile.state,
     country: profile.country,
@@ -45,6 +46,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       gender: formData.gender as any,
       age,
       title: formData.title as any,
+      address: formData.address || undefined,  // NEW: Include address
       city: formData.city,
       state: formData.state,
       country: formData.country,
@@ -196,6 +198,21 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           {/* Location */}
           <div className="settings-section">
             <h3 className="section-title">Location</h3>
+            
+            <div className="form-group">
+              <label htmlFor="edit-address">Street Address</label>
+              <input
+                id="edit-address"
+                type="text"
+                value={formData.address}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+                placeholder="123 Main Street, Apt 4B"
+                className="form-input"
+              />
+              <span className="form-help-text">
+                Used for Uber pickup on desktop. Leave blank to use your city.
+              </span>
+            </div>
             
             <div className="form-group">
               <label htmlFor="edit-city">City</label>
