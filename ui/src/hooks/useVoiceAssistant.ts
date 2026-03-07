@@ -30,8 +30,17 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     autoConnect = true,
     enableSpeechRecognition = true,
     enableSpeechSynthesis = true,
-    userProfile,  // NEW: Extract user profile
+    userProfile,  // Extract user profile
   } = options;
+
+  // Use ref to track latest userProfile value (updates when profile changes)
+  const userProfileRef = useRef(userProfile);
+  
+  // Update ref when userProfile changes
+  useEffect(() => {
+    userProfileRef.current = userProfile;
+    console.log('[Voice Assistant] User profile updated:', userProfile);
+  }, [userProfile]);
 
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
@@ -362,13 +371,13 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
 
     try {
       console.log('[WebSocket] Sending message to backend:', text);
-      console.log('[WebSocket] Including user profile:', userProfile);
+      console.log('[WebSocket] Including user profile:', userProfileRef.current);
       console.log('[WebSocket] User agent:', navigator.userAgent);
       
       setStatus('processing');
       
-      // Send message with user profile and user agent
-      wsClient.current.sendMessage(text, userProfile, navigator.userAgent);
+      // Send message with user profile and user agent (use ref for latest value)
+      wsClient.current.sendMessage(text, userProfileRef.current, navigator.userAgent);
       
       console.log('[WebSocket] Message sent successfully with user context');
     } catch (error) {
@@ -380,7 +389,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
         setError(null);
       }, 3000);
     }
-  }, [isConnected, userProfile]);  // Add userProfile as dependency
+  }, [isConnected]);  // Remove userProfile from dependencies since we use ref
 
   /**
    * Speak text using Speech Synthesis

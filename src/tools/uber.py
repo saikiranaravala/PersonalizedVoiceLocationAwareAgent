@@ -77,8 +77,18 @@ class UberTool(BaseTool):
         else:
             # Desktop - try user profile first, then system location
             if user_profile and user_profile.get("address"):
-                # Use address from user profile
-                profile_address = user_profile["address"]
+                # Build complete address from user profile
+                address_parts = [user_profile["address"]]
+                if user_profile.get("city"):
+                    address_parts.append(user_profile["city"])
+                if user_profile.get("state"):
+                    address_parts.append(user_profile["state"])
+                if user_profile.get("country"):
+                    address_parts.append(user_profile["country"])
+                
+                profile_address = ", ".join(address_parts)
+                logger.info(f"Desktop - building complete address from profile: {profile_address}")
+                
                 pickup_coords = self.location_service.geocode_address(profile_address)
                 
                 if pickup_coords:
