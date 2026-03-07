@@ -102,12 +102,28 @@ class AgenticAssistant:
         )
         
         # Uber booking tool
-        uber_tool = UberTool(self.location_service)
+        self.uber_tool = UberTool(self.location_service)
+        
+        # Create wrapper that adds context (user_agent, user_profile)
+        def uber_execute_with_context(destination: str, pickup: str = None, **kwargs):
+            """Wrapper that adds request context to Uber tool."""
+            # Get context from current request (will be set in process_request)
+            user_agent = getattr(self, '_current_user_agent', None)
+            user_profile = getattr(self, '_current_user_profile', None)
+            
+            return self.uber_tool.execute(
+                destination=destination,
+                pickup=pickup,
+                user_agent=user_agent,
+                user_profile=user_profile,
+                **kwargs
+            )
+        
         tools.append(
             StructuredTool.from_function(
-                func=uber_tool.execute,
-                name=uber_tool.name,
-                description=uber_tool.description,
+                func=uber_execute_with_context,
+                name=self.uber_tool.name,
+                description=self.uber_tool.description,
             )
         )
         
@@ -202,16 +218,23 @@ class AgenticAssistant:
         logger.info("Agent executor initialized")
         return agent_executor
 
-    def process_request(self, user_input: str) -> Dict[str, Any]:
-        """Process a user request.
+    def process_request(self, user_input: str, user_agent: str = None, 
+                       user_profile: dict = None) -> Dict[str, Any]:
+        """Process a user request with context.
         
         Args:
             user_input: User's input text
+            user_agent: HTTP User-Agent header for device detection
+            user_profile: User profile data (name, address, preferences, etc.)
             
         Returns:
             Response dictionary with output and metadata
         """
         logger.info(f"Processing request: {user_input}")
+        
+        # Store context for tool wrappers to access
+        self._current_user_agent = user_agent
+        self._current_user_profile = user_profile
         
         # Add to conversation history
         self.context_manager.add_to_history("user", user_input)
