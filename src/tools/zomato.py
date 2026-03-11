@@ -144,24 +144,24 @@ class ZomatoTool(BaseTool):
                 {"name": "The Cork 1794", "cuisine": "Italian", "rating": 4.7, "address": "900 W Erie Plaza Dr, Erie, PA 16505", "price_range": 4},
             ],
             "chinese": [
-                {"name": "Golden Dragon", "cuisine": "Chinese", "rating": 4.2, "address": "321 Pine St", "price_range": 2},
-                {"name": "Szechuan House", "cuisine": "Chinese", "rating": 4.4, "address": "654 Maple Dr", "price_range": 3},
-                {"name": "Dim Sum Palace", "cuisine": "Chinese", "rating": 4.6, "address": "987 Cedar Ln", "price_range": 3},
+                {"name": "Kirin Court", "cuisine": "Chinese", "rating": 4.7, "address": "5624 Peach St, Erie, PA 16509", "price_range": 10-20},
+                {"name": "Yummy Bowl", "cuisine": "Chinese", "rating": 4.6, "address": "2421 Asbury Rd, Erie, PA 16506", "price_range": 10-15},
+                {"name": "Imperial Buffet", "cuisine": "Chinese", "rating": 4.3, "address": "7200 Peach St Suite 14, Erie, PA 16509", "price_range": 15-18},
             ],
             "mexican": [
-                {"name": "El Mariachi", "cuisine": "Mexican", "rating": 4.3, "address": "147 Beach Rd", "price_range": 2},
-                {"name": "Taco Fiesta", "cuisine": "Mexican", "rating": 4.1, "address": "258 Hill St", "price_range": 1},
-                {"name": "Casa Grande", "cuisine": "Mexican", "rating": 4.5, "address": "369 Valley Dr", "price_range": 3},
+                {"name": "Chipotle Mexican Grill", "cuisine": "Mexican", "rating": 4.3, "address": "6611 Peach St, Erie, PA 16509", "price_range": 10-20},
+                {"name": "El Amigo Mexican Grill", "cuisine": "Mexican", "rating": 4.4, "address": "333 State St, Erie, PA 16507", "price_range": 20-30},
+                {"name": "El Canelo Mexican Restaurant", "cuisine": "Mexican", "rating": 4.5, "address": "2709 W 12th St, Erie, PA 16505", "price_range": 10-20},
             ],
             "indian": [
-                {"name": "El Mariachi", "cuisine": "Mexican", "rating": 4.3, "address": "147 Beach Rd", "price_range": 2},
-                {"name": "Taco Fiesta", "cuisine": "Mexican", "rating": 4.1, "address": "258 Hill St", "price_range": 1},
-                {"name": "Casa Grande", "cuisine": "Mexican", "rating": 4.5, "address": "369 Valley Dr", "price_range": 3},
+                {"name": "Kadhai Kitchen", "cuisine": "Indian", "rating": 4.8, "address": "5901 W Ridge Rd, Erie, PA 16506", "price_range": 20-30},
+                {"name": "Biryani Bowl", "cuisine": "Indian", "rating": 4.5, "address": "1707 State St, Erie, PA 16501", "price_range": 10-20},
+                {"name": "Tandoori Hut Indian Cuisine", "cuisine": "Indian", "rating": 4.3, "address": "2605 Washington Ave, Erie, PA 16508", "price_range": 10-20},
             ],
             "thai": [
-                {"name": "El Mariachi", "cuisine": "Mexican", "rating": 4.3, "address": "147 Beach Rd", "price_range": 2},
-                {"name": "Taco Fiesta", "cuisine": "Mexican", "rating": 4.1, "address": "258 Hill St", "price_range": 1},
-                {"name": "Casa Grande", "cuisine": "Mexican", "rating": 4.5, "address": "369 Valley Dr", "price_range": 3},
+                {"name": "Thai Eatery", "cuisine": "Thai", "rating": 4.6, "address": "5641 Peach St, Erie, PA 16509", "price_range": 10-20},
+                {"name": "Thai Taste Cuisine", "cuisine": "Thai", "rating": 4.7, "address": "35 Peninsula Dr, Erie, PA 16505", "price_range": 10},
+                {"name": "Chopstix Express", "cuisine": "Thai", "rating": 4.2, "address": "3842 Liberty St, Erie, PA 16509", "price_range": 10-20},
             ],
         }
         
@@ -176,10 +176,10 @@ class ZomatoTool(BaseTool):
         
         # Default generic restaurants if no match
         if not restaurants:
-            restaurants = [
-                {"name": f"Sample Restaurant {i+1}", "cuisine": query.title(), "rating": 4.0 + (i * 0.1), 
-                 "address": f"{i+1}00 Demo St", "price_range": 2}
-                for i in range(min(limit, 3))
+            restaurants =[
+                {"name": "Kadhai Kitchen", "cuisine": "Indian", "rating": 4.8, "address": "5901 W Ridge Rd, Erie, PA 16506", "price_range": 20-30},
+                {"name": "Chipotle Mexican Grill", "cuisine": "Mexican", "rating": 4.3, "address": "6611 Peach St, Erie, PA 16509", "price_range": 10-20},
+                {"name": "Olive Garden Italian Restaurant", "cuisine": "Italian", "rating": 4.3, "address": "5945 Peach St, Erie, PA 16509", "price_range": 20-25}            
             ]
         
         return {
