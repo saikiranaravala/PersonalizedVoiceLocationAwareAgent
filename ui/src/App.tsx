@@ -61,6 +61,10 @@ function App() {
 
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  
+  // Text input state
+  const [textInput, setTextInput] = useState('');
+  const [isTextInputFocused, setIsTextInputFocused] = useState(false);
 
   // Show profile setup on first load if not configured
   useEffect(() => {
@@ -129,6 +133,51 @@ function App() {
     };
 
     sendTextMessage(messages[action] || action);
+  };
+
+  // Text input handlers
+  const handleTextSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
+    if (!textInput.trim()) {
+      return;
+    }
+
+    if (!isConnected) {
+      alert('Backend not connected. Please start the backend server.');
+      return;
+    }
+
+    console.log('[App] Sending text message:', textInput);
+    sendTextMessage(textInput);
+    setTextInput(''); // Clear input after sending
+    setIsTextInputFocused(false); // Blur after sending
+  };
+
+  const handleTextKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleTextSubmit();
+    }
+    
+    // Escape key to blur
+    if (e.key === 'Escape') {
+      setIsTextInputFocused(false);
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+  
+  const handleTextFocus = () => {
+    setIsTextInputFocused(true);
+  };
+  
+  const handleTextBlur = () => {
+    // Only blur if input is empty
+    if (!textInput.trim()) {
+      setIsTextInputFocused(false);
+    }
   };
 
   /**
@@ -311,6 +360,49 @@ function App() {
       {/* Bottom Action Area */}
       <div className="app-bottom safe-bottom">
         <div className="container">
+          {/* Text Input Box - Smart Auto-hiding */}
+          <div className={`text-input-area ${isTextInputFocused ? 'text-input-area--focused' : 'text-input-area--blurred'}`}>
+            <form onSubmit={handleTextSubmit} className="text-input-form">
+              <input
+                type="text"
+                className="text-input"
+                placeholder={isTextInputFocused ? "Type your message here..." : "Tap to type..."}
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                onKeyDown={handleTextKeyPress}
+                onFocus={handleTextFocus}
+                onBlur={handleTextBlur}
+                disabled={!isConnected || voiceStatus === 'processing'}
+                aria-label="Type your message"
+              />
+              <button
+                type="submit"
+                className="text-submit-button"
+                disabled={!isConnected || !textInput.trim() || voiceStatus === 'processing'}
+                aria-label="Send message"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </form>
+            {isTextInputFocused && (
+              <p className="text-input-hint">
+                Press Enter to send, Esc to hide
+              </p>
+            )}
+          </div>
+
           {/* Voice control with instructions */}
           <div className="voice-control">
             {/* Push-to-talk instruction */}

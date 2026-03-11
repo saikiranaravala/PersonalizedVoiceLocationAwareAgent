@@ -591,6 +591,151 @@
 }
 
 /* ========================================
+   TEXT INPUT
+   ======================================== */
+
+.text-input-area {
+  margin-bottom: var(--space-6);
+  transition: all 0.3s ease;
+}
+
+/* Blurred state - transparent and minimal */
+.text-input-area--blurred {
+  opacity: 0.4;
+}
+
+.text-input-area--blurred .text-input-form {
+  background: transparent;
+  border-color: transparent;
+}
+
+.text-input-area--blurred .text-input {
+  color: var(--text-tertiary);
+}
+
+.text-input-area--blurred .text-submit-button {
+  opacity: 0.5;
+  background: transparent;
+  color: var(--text-tertiary);
+}
+
+/* Focused state - fully visible */
+.text-input-area--focused {
+  opacity: 1;
+}
+
+.text-input-form {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  transition: all 0.3s ease;
+}
+
+.text-input-area--focused .text-input-form {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-alpha);
+  background: var(--surface);
+}
+
+.text-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  padding: var(--space-3);
+  min-height: 48px;
+  transition: all 0.3s ease;
+}
+
+.text-input::placeholder {
+  color: var(--text-tertiary);
+  transition: color 0.3s ease;
+}
+
+.text-input-area--blurred .text-input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+.text-input-area--focused .text-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.text-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.text-submit-button {
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--surface);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.text-input-area--focused .text-submit-button {
+  background: var(--primary);
+  color: var(--surface);
+}
+
+.text-input-area--focused .text-submit-button:hover:not(:disabled) {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--primary-alpha);
+}
+
+.text-submit-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.text-submit-button:disabled {
+  background: var(--border);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.text-submit-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.text-input-hint {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+  text-align: center;
+  font-style: italic;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
    PRINT STYLES
    ======================================== */
 
@@ -598,7 +743,8 @@
   .app-header,
   .app-bottom,
   .status-indicator,
-  .quick-actions {
+  .quick-actions,
+  .text-input-area {
     display: none;
   }
   
