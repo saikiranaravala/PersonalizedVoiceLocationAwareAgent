@@ -12,7 +12,7 @@ agent:
   # Optional: Custom OpenRouter base URL (leave empty for default)
   openrouter_base_url: "https://openrouter.ai/api/v1"
   
-  temperature: 0.7
+  temperature: 0.4
   max_iterations: 10
   timeout_seconds: 120
   retry_attempts: 3
