@@ -304,7 +304,7 @@
   padding: var(--space-2) var(--space-3);
   background: var(--background-secondary);
   border-bottom: 1px solid var(--divider);
-  cursor: grab;
+  cursor: default;
   user-select: none;
   -webkit-user-select: none;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -314,7 +314,7 @@
 .chat-window__titlebar:active { cursor: grabbing; }
 .chat-window--maximized .chat-window__titlebar { cursor: default; }
 
-.chat-window__titlebar-info {
+.chat-window__drag-zone {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -341,6 +341,10 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  pointer-events: all;
 }
 
 /* macOS-style window buttons */

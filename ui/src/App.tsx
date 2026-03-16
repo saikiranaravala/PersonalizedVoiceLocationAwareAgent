@@ -301,14 +301,14 @@ function App() {
         role="complementary"
         aria-label="Chat input window"
       >
-        {/* Title bar — draggable */}
-        <div
-          className="chat-window__titlebar"
-          onPointerDown={startDrag}
-          onPointerMove={onDragMove}
-          onPointerUp={endDrag}
-        >
-          <div className="chat-window__titlebar-info">
+        {/* Title bar: drag zone is the left info area only; controls are fully isolated */}
+        <div className="chat-window__titlebar">
+          <div
+            className="chat-window__drag-zone"
+            onPointerDown={startDrag}
+            onPointerMove={onDragMove}
+            onPointerUp={endDrag}
+          >
             {voiceStatus !== 'idle' && (
               <span className={`chat-window__status-dot chat-window__status-dot--${voiceStatus}`} />
             )}
@@ -319,10 +319,16 @@ function App() {
                 : 'Chat'}
             </span>
           </div>
-          <div className="chat-window__controls">
+          <div
+            className="chat-window__controls"
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            onPointerMove={(e) => e.stopPropagation()}
+          >
             <button
               className="chat-window__ctrl chat-window__ctrl--minimize"
               onClick={toggleMinimize}
+              type="button"
               aria-label={chatWindowState === 'minimized' ? 'Restore chat' : 'Minimize chat'}
               title={chatWindowState === 'minimized' ? 'Restore' : 'Minimize'}
             >
@@ -331,6 +337,7 @@ function App() {
             <button
               className="chat-window__ctrl chat-window__ctrl--maximize"
               onClick={toggleMaximize}
+              type="button"
               aria-label={chatWindowState === 'maximized' ? 'Restore chat size' : 'Maximize chat'}
               title={chatWindowState === 'maximized' ? 'Restore' : 'Maximize'}
             >
