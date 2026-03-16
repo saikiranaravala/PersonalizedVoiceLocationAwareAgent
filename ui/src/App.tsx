@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import VoiceButton from './components/voice/VoiceButton/VoiceButton';
 import Button from './components/core/Button/Button';
 import { useVoiceAssistant } from './hooks/useVoiceAssistant';
@@ -9,248 +9,223 @@ import './styles/tokens.css';
 import './styles/global.css';
 import './App.css';
 
-/**
- * Main App Component
- * 
- * Voice-first AI Assistant UI connected to backend
- * - Real-time voice interaction
- * - WebSocket communication
- * - Speech recognition & synthesis
- * - Theme switching
- * - Responsive layout
- */
-
 type Theme = 'light' | 'dark' | 'high-contrast';
+type ChatWindowState = 'minimized' | 'default' | 'maximized';
+
+// Drag state type
+interface DragState {
+  isDragging: boolean;
+  startX: number;
+  startY: number;
+  startLeft: number;
+  startTop: number;
+}
+
+// Resize state type
+interface ResizeState {
+  isResizing: boolean;
+  startX: number;
+  startY: number;
+  startWidth: number;
+  startHeight: number;
+}
 
 function App() {
   const [theme, setTheme] = useState<Theme>('light');
+  const [chatWindowState, setChatWindowState] = useState<ChatWindowState>('default');
+  const [chatPosition, setChatPosition] = useState({ left: -1, top: -1 }); // -1 = use CSS default
+  const [chatSize, setChatSize] = useState({ width: 380, height: 480 });
+  const dragState = useRef<DragState>({ isDragging: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 });
+  const resizeState = useRef<ResizeState>({ isResizing: false, startX: 0, startY: 0, startWidth: 0, startHeight: 0 });
+  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
 
-  // User profile and preferences (get this FIRST)
   const {
-    isProfileSetup,
-    profile,
-    userData,
-    getGreeting,
-    updateProfile,
-    addRestaurantVisit,
-    addUberTrip,
-    getUserContext,
-    resetUserData,
+    isProfileSetup, profile, getGreeting, updateProfile, resetUserData,
   } = useUserProfile();
 
-  // Connect to backend voice assistant (pass user profile)
   const {
-    status: voiceStatus,
-    conversation,
-    isConnected,
-    isConnecting,
-    error,
-    startListening,
-    stopListening,
-    stopSpeaking,
-    sendTextMessage,
-    clearConversation,
-    reconnect,
+    status: voiceStatus, conversation, isConnected, isConnecting, error,
+    startListening, stopListening, stopSpeaking, sendTextMessage,
+    clearConversation, reconnect,
   } = useVoiceAssistant({
     backendUrl: 'ws://localhost:8000',
     autoConnect: true,
     enableSpeechRecognition: true,
     enableSpeechSynthesis: true,
-    userProfile: profile,  // Pass user profile data
+    userProfile: profile,
   });
 
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
-  
-  // Text input state
   const [textInput, setTextInput] = useState('');
-  const [isTextInputFocused, setIsTextInputFocused] = useState(false);
 
-  // Show profile setup on first load if not configured
   useEffect(() => {
     if (!isProfileSetup) {
-      // Show setup after a brief delay for smoother UX
-      const timer = setTimeout(() => {
-        setShowProfileSetup(true);
-      }, 1000);
+      const timer = setTimeout(() => setShowProfileSetup(true), 1000);
       return () => clearTimeout(timer);
     }
   }, [isProfileSetup]);
 
-  // Apply theme to document
-  React.useEffect(() => {
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Handle voice button press
-  const handleVoicePress = () => {
-    if (!isConnected) {
-      alert('Backend not connected. Please start the backend server: python api_server.py');
-      return;
-    }
-    console.log('[App] Voice button pressed - starting listening');
-    startListening();
-  };
+  // Auto-scroll messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation]);
 
-  const handleVoiceRelease = () => {
-    // Stop listening when button is released
-    console.log('[App] Voice button released - stopping listening');
-    stopListening();
-  };
-
-  // Keyboard shortcuts
+  // Keyboard shortcut: Escape stops speaking
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Escape key stops speaking
-      if (e.key === 'Escape' && voiceStatus === 'speaking') {
-        console.log('[App] Escape pressed - stopping speech');
-        stopSpeaking();
-      }
+      if (e.key === 'Escape' && voiceStatus === 'speaking') stopSpeaking();
     };
-
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [voiceStatus, stopSpeaking]);
 
   const cycleTheme = () => {
     const themes: Theme[] = ['light', 'dark', 'high-contrast'];
-    const currentIndex = themes.indexOf(theme);
-    const nextIndex = (currentIndex + 1) % themes.length;
-    setTheme(themes[nextIndex]);
+    setTheme(themes[(themes.indexOf(theme) + 1) % themes.length]);
   };
 
-  // Quick action handlers
   const handleQuickAction = (action: string) => {
-    if (!isConnected) {
-      alert('Backend not connected. Please start the backend server.');
-      return;
-    }
-
+    if (!isConnected) return;
     const messages: Record<string, string> = {
       weather: "What's the weather like?",
       restaurants: "Find restaurants near me",
-      ride: "Book me a ride"
+      ride: "Book me a ride",
     };
-
     sendTextMessage(messages[action] || action);
   };
 
-  // Text input handlers
   const handleTextSubmit = (e?: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
-    
-    if (!textInput.trim()) {
-      return;
-    }
-
-    if (!isConnected) {
-      alert('Backend not connected. Please start the backend server.');
-      return;
-    }
-
-    console.log('[App] Sending text message:', textInput);
+    e?.preventDefault();
+    if (!textInput.trim() || !isConnected) return;
     sendTextMessage(textInput);
-    setTextInput(''); // Clear input after sending
-    setIsTextInputFocused(false); // Blur after sending
+    setTextInput('');
   };
 
-  const handleTextKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleTextSubmit();
-    }
-    
-    // Escape key to blur
-    if (e.key === 'Escape') {
-      setIsTextInputFocused(false);
-      (e.target as HTMLInputElement).blur();
-    }
-  };
-  
-  const handleTextFocus = () => {
-    setIsTextInputFocused(true);
-  };
-  
-  const handleTextBlur = () => {
-    // Only blur if input is empty
-    if (!textInput.trim()) {
-      setIsTextInputFocused(false);
-    }
+  const handleTextKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleTextSubmit(); }
   };
 
-  /**
-   * Convert URLs in text to clickable links
-   */
-  const linkifyText = (text: string) => {
-    // Regular expression to match URLs
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    
-    return parts.map((part, index) => {
-      // If this part matches a URL, make it a clickable link
-      if (urlRegex.test(part)) {
-        return (
-          <a
-            key={index}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="message-link"
-          >
-            [click here to confirm and book your ride]
-          </a>
-        );
-      }
-      // Otherwise, return as plain text
-      return part;
+  const handleVoicePress = () => {
+    if (!isConnected) return;
+    startListening();
+  };
+
+  const handleVoiceRelease = () => stopListening();
+
+  // ── DRAG ──────────────────────────────────────────────────────
+  const startDrag = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (chatWindowState === 'maximized') return;
+    const rect = chatWindowRef.current!.getBoundingClientRect();
+    dragState.current = {
+      isDragging: true,
+      startX: e.clientX, startY: e.clientY,
+      startLeft: rect.left, startTop: rect.top,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [chatWindowState]);
+
+  const onDragMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragState.current.isDragging) return;
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    const newLeft = Math.max(0, Math.min(window.innerWidth - chatSize.width, dragState.current.startLeft + dx));
+    const newTop = Math.max(0, Math.min(window.innerHeight - 60, dragState.current.startTop + dy));
+    setChatPosition({ left: newLeft, top: newTop });
+  }, [chatSize.width]);
+
+  const endDrag = useCallback(() => {
+    dragState.current.isDragging = false;
+  }, []);
+
+  // ── RESIZE ────────────────────────────────────────────────────
+  const startResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    resizeState.current = {
+      isResizing: true,
+      startX: e.clientX, startY: e.clientY,
+      startWidth: chatSize.width, startHeight: chatSize.height,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [chatSize]);
+
+  const onResizeMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizeState.current.isResizing) return;
+    const dx = e.clientX - resizeState.current.startX;
+    const dy = e.clientY - resizeState.current.startY;
+    setChatSize({
+      width: Math.max(300, Math.min(720, resizeState.current.startWidth + dx)),
+      height: Math.max(360, Math.min(800, resizeState.current.startHeight + dy)),
     });
+  }, []);
+
+  const endResize = useCallback(() => {
+    resizeState.current.isResizing = false;
+  }, []);
+
+  const toggleMinimize = () => {
+    setChatWindowState(s => s === 'minimized' ? 'default' : 'minimized');
+  };
+
+  const toggleMaximize = () => {
+    setChatWindowState(s => s === 'maximized' ? 'default' : 'maximized');
+  };
+
+  // Compute chat window styles
+  const chatWindowStyle: React.CSSProperties = (() => {
+    if (chatWindowState === 'maximized') return {};
+    const style: React.CSSProperties = {};
+    if (chatPosition.left !== -1) { style.left = chatPosition.left; style.top = chatPosition.top; style.right = 'auto'; style.bottom = 'auto'; }
+    if (chatWindowState !== 'minimized') {
+      style.width = chatSize.width;
+      style.height = chatSize.height;
+    }
+    return style;
+  })();
+
+  const linkifyText = (text: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    return text.split(urlRegex).map((part, i) =>
+      urlRegex.test(part)
+        ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="message-link">[click here]</a>
+        : part
+    );
   };
 
   return (
     <div className="app">
-      {/* Skip to main content */}
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
+      <a href="#main-content" className="skip-link">Skip to main content</a>
 
-      {/* Connection Status Banner */}
+      {/* ── STATUS BANNERS ── */}
       {!isConnected && !isConnecting && (
         <div className="connection-banner" role="alert">
           <div className="container">
             <div className="connection-banner__content">
               <span className="connection-banner__icon">⚠️</span>
               <span className="connection-banner__text">
-                Not connected to backend. Please start the server: <code>python api_server.py</code>
+                Not connected. Start: <code>python api_server.py</code>
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={reconnect}
-              >
-                Retry
-              </Button>
+              <Button variant="ghost" size="sm" onClick={reconnect}>Retry</Button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Connecting Banner */}
       {isConnecting && (
         <div className="connecting-banner" role="status">
           <div className="container">
             <div className="connecting-banner__content">
               <span className="connecting-banner__icon">🔄</span>
-              <span className="connecting-banner__text">
-                Connecting to backend...
-              </span>
+              <span className="connecting-banner__text">Connecting to backend...</span>
             </div>
           </div>
         </div>
       )}
-
-      {/* Error Banner */}
       {error && (
         <div className="error-banner" role="alert">
           <div className="container">
@@ -262,7 +237,7 @@ function App() {
         </div>
       )}
 
-      {/* Header */}
+      {/* ── HEADER ── */}
       <header className="app-header safe-top">
         <div className="container">
           <div className="app-header__content">
@@ -270,249 +245,202 @@ function App() {
               Voice Assistant
               {isConnected && <span className="connection-dot" title="Connected" />}
             </h1>
-            
             <div className="app-header__actions">
-              {/* Theme switcher */}
-              <Button
-                variant="ghost"
-                size="base"
-                iconOnly={<ThemeIcon />}
-                onClick={cycleTheme}
-                aria-label={`Current theme: ${theme}. Click to change theme`}
-              />
-              
-              {/* Clear conversation */}
+              <Button variant="ghost" size="sm" iconOnly={<ThemeIcon />} onClick={cycleTheme} aria-label={`Theme: ${theme}`} />
               {conversation.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="base"
-                  iconOnly={<ClearIcon />}
-                  onClick={clearConversation}
-                  aria-label="Clear conversation"
-                />
+                <Button variant="ghost" size="sm" iconOnly={<ClearIcon />} onClick={clearConversation} aria-label="Clear conversation" />
               )}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* ── MAIN HISTORY AREA ── */}
       <main id="main-content" className="app-main">
         <div className="container">
-          {/* Conversation Area */}
           <div className="conversation-area">
             {conversation.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state__icon">
-                  <MicrophoneIcon />
-                </div>
+                <div className="empty-state__icon"><EmptyStateIcon /></div>
                 <h2 className="empty-state__title">
-                  {isConnected 
-                    ? (isProfileSetup ? getGreeting() : 'Tap the microphone to start')
-                    : 'Waiting for backend connection...'}
+                  {isConnected
+                    ? (isProfileSetup ? getGreeting() : 'Use the chat window below')
+                    : 'Waiting for backend...'}
                 </h2>
                 <p className="empty-state__description">
-                  {isConnected 
-                    ? 'I can help you with weather, restaurants, rides, and more'
-                    : 'Start the backend server to begin: python api_server.py'
-                  }
+                  {isConnected
+                    ? 'Type or speak — I can help with weather, restaurants, rides & more'
+                    : 'Start the backend server: python api_server.py'}
                 </p>
                 {isProfileSetup && profile && (
-                  <button
-                    onClick={() => setShowProfileSettings(true)}
-                    className="edit-profile-link"
-                  >
-                    Edit Profile
-                  </button>
+                  <button onClick={() => setShowProfileSettings(true)} className="edit-profile-link">Edit Profile</button>
                 )}
               </div>
             ) : (
               <div className="conversation-list">
                 {conversation.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`conversation-bubble conversation-bubble--${message.role}`}
-                  >
-                    <div className="conversation-bubble__content">
-                      {linkifyText(message.text)}
-                    </div>
+                  <div key={index} className={`conversation-bubble conversation-bubble--${message.role}`}>
+                    <div className="conversation-bubble__content">{linkifyText(message.text)}</div>
                     <div className="conversation-bubble__timestamp">
-                      {message.timestamp.toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
             )}
           </div>
-
-          {/* Voice Status Indicator */}
-          {voiceStatus !== 'idle' && (
-            <div className="status-indicator" role="status" aria-live="polite">
-              <StatusIndicator status={voiceStatus} />
-            </div>
-          )}
         </div>
       </main>
 
-      {/* Bottom Action Area */}
-      <div className="app-bottom safe-bottom">
-        <div className="container">
-          {/* Text Input Box - Smart Auto-hiding */}
-          <div className={`text-input-area ${isTextInputFocused ? 'text-input-area--focused' : 'text-input-area--blurred'}`}>
-            <form onSubmit={handleTextSubmit} className="text-input-form">
+      {/* ── FLOATING CHAT WINDOW ── */}
+      <div
+        ref={chatWindowRef}
+        className={`chat-window chat-window--${chatWindowState}`}
+        style={chatWindowStyle}
+        role="complementary"
+        aria-label="Chat input window"
+      >
+        {/* Title bar — draggable */}
+        <div
+          className="chat-window__titlebar"
+          onPointerDown={startDrag}
+          onPointerMove={onDragMove}
+          onPointerUp={endDrag}
+        >
+          <div className="chat-window__titlebar-info">
+            {voiceStatus !== 'idle' && (
+              <span className={`chat-window__status-dot chat-window__status-dot--${voiceStatus}`} />
+            )}
+            <span className="chat-window__title">
+              {voiceStatus === 'listening' ? 'Listening…'
+                : voiceStatus === 'processing' ? 'Processing…'
+                : voiceStatus === 'speaking' ? 'Speaking…'
+                : 'Chat'}
+            </span>
+          </div>
+          <div className="chat-window__controls">
+            <button
+              className="chat-window__ctrl chat-window__ctrl--minimize"
+              onClick={toggleMinimize}
+              aria-label={chatWindowState === 'minimized' ? 'Restore chat' : 'Minimize chat'}
+              title={chatWindowState === 'minimized' ? 'Restore' : 'Minimize'}
+            >
+              <MinimizeIcon />
+            </button>
+            <button
+              className="chat-window__ctrl chat-window__ctrl--maximize"
+              onClick={toggleMaximize}
+              aria-label={chatWindowState === 'maximized' ? 'Restore chat size' : 'Maximize chat'}
+              title={chatWindowState === 'maximized' ? 'Restore' : 'Maximize'}
+            >
+              {chatWindowState === 'maximized' ? <RestoreIcon /> : <MaximizeIcon />}
+            </button>
+          </div>
+        </div>
+
+        {/* Body — hidden when minimized */}
+        {chatWindowState !== 'minimized' && (
+          <div className="chat-window__body">
+            {/* Quick actions */}
+            <div className="chat-window__quickactions">
+              <button className="chat-window__qa-btn" onClick={() => handleQuickAction('weather')} disabled={!isConnected}>
+                <WeatherIcon /> <span>Weather</span>
+              </button>
+              <button className="chat-window__qa-btn" onClick={() => handleQuickAction('restaurants')} disabled={!isConnected}>
+                <RestaurantIcon /> <span>Restaurants</span>
+              </button>
+              <button className="chat-window__qa-btn" onClick={() => handleQuickAction('ride')} disabled={!isConnected}>
+                <CarIcon /> <span>Ride</span>
+              </button>
+            </div>
+
+            {/* Input row */}
+            <form className="chat-window__inputrow" onSubmit={handleTextSubmit}>
+              {/* Mic button — inline, compact */}
+              <div className="chat-window__mic-wrap">
+                <VoiceButton
+                  status={voiceStatus}
+                  onPress={handleVoicePress}
+                  onRelease={handleVoiceRelease}
+                  size="base"
+                  showWaveform={false}
+                  disabled={!isConnected}
+                />
+              </div>
+
+              {/* Text input */}
               <input
+                ref={textInputRef}
                 type="text"
-                className="text-input"
-                placeholder={isTextInputFocused ? "Type your message here..." : "Tap to type..."}
+                className="chat-window__textinput"
+                placeholder={
+                  !isConnected ? 'Not connected…'
+                    : voiceStatus === 'listening' ? 'Listening…'
+                    : voiceStatus === 'processing' ? 'Processing…'
+                    : 'Type a message…'
+                }
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                onKeyDown={handleTextKeyPress}
-                onFocus={handleTextFocus}
-                onBlur={handleTextBlur}
+                onKeyDown={handleTextKeyDown}
                 disabled={!isConnected || voiceStatus === 'processing'}
                 aria-label="Type your message"
+                autoComplete="off"
               />
+
+              {/* Send button */}
               <button
                 type="submit"
-                className="text-submit-button"
+                className="chat-window__sendbtn"
                 disabled={!isConnected || !textInput.trim() || voiceStatus === 'processing'}
                 aria-label="Send message"
               >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
+                <SendIcon />
               </button>
             </form>
-            {isTextInputFocused && (
-              <p className="text-input-hint">
-                Press Enter to send, Esc to hide
-              </p>
-            )}
-          </div>
 
-          {/* Voice control with instructions */}
-          <div className="voice-control">
-            {/* Push-to-talk instruction */}
-            {voiceStatus === 'idle' && (
-              <p className="voice-instruction">
-                Hold to talk, release to send
-              </p>
-            )}
-            
-            {/* Status text when active */}
-            {voiceStatus !== 'idle' && (
-              <p className="voice-instruction voice-instruction--active">
-                {voiceStatus === 'listening' && 'Listening... Release when done'}
-                {voiceStatus === 'processing' && 'Processing your request...'}
-                {voiceStatus === 'speaking' && 'Speaking response... (Press Esc to stop)'}
-                {voiceStatus === 'error' && 'Error occurred'}
-              </p>
-            )}
-            
-            <VoiceButton
-              status={voiceStatus}
-              onPress={handleVoicePress}
-              onRelease={handleVoiceRelease}
-              size="large"
-              showWaveform={true}
-              disabled={!isConnected}
-            />
-            
-            {/* Manual stop button when listening */}
+            {/* Voice status hints */}
             {voiceStatus === 'listening' && (
-              <Button
-                variant="secondary"
-                size="base"
-                onClick={handleVoiceRelease}
-                style={{ marginTop: 'var(--space-4)' }}
-              >
-                Stop & Send
-              </Button>
+              <div className="chat-window__voice-hint">
+                <span>Release mic to send</span>
+                <button className="chat-window__stop-btn" onClick={handleVoiceRelease}>Stop & Send</button>
+              </div>
             )}
-
-            {/* Stop speaking button when assistant is speaking */}
             {voiceStatus === 'speaking' && (
-              <Button
-                variant="secondary"
-                size="base"
-                onClick={stopSpeaking}
-                style={{ marginTop: 'var(--space-4)' }}
-              >
-                🔇 Stop Speaking
-              </Button>
+              <div className="chat-window__voice-hint">
+                <span>Speaking response…</span>
+                <button className="chat-window__stop-btn" onClick={stopSpeaking}>🔇 Stop</button>
+              </div>
             )}
           </div>
+        )}
 
-          {/* Quick Actions */}
-          <div className="quick-actions">
-            <Button
-              variant="secondary"
-              size="sm"
-              iconBefore={<WeatherIcon />}
-              onClick={() => handleQuickAction('weather')}
-              disabled={!isConnected}
-            >
-              Weather
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              iconBefore={<RestaurantIcon />}
-              onClick={() => handleQuickAction('restaurants')}
-              disabled={!isConnected}
-            >
-              Restaurants
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              iconBefore={<CarIcon />}
-              onClick={() => handleQuickAction('ride')}
-              disabled={!isConnected}
-            >
-              Ride
-            </Button>
+        {/* Resize handle — bottom-right corner */}
+        {chatWindowState === 'default' && (
+          <div
+            className="chat-window__resize-handle"
+            onPointerDown={startResize}
+            onPointerMove={onResizeMove}
+            onPointerUp={endResize}
+            aria-label="Resize chat window"
+          >
+            <ResizeIcon />
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Profile Setup Modal (First time) */}
+      {/* ── MODALS ── */}
       {showProfileSetup && !isProfileSetup && (
         <ProfileSetup
-          onComplete={(profileData) => {
-            updateProfile(profileData);
-            setShowProfileSetup(false);
-          }}
+          onComplete={(p) => { updateProfile(p); setShowProfileSetup(false); }}
           onSkip={() => setShowProfileSetup(false)}
         />
       )}
-
-      {/* Profile Settings Modal (Edit/Reset) */}
       {showProfileSettings && isProfileSetup && profile && (
         <ProfileSettings
           profile={profile}
-          onUpdate={(profileData) => {
-            updateProfile(profileData);
-          }}
-          onReset={() => {
-            resetUserData();
-            setShowProfileSettings(false);
-            // Show setup again after reset
-            setTimeout(() => setShowProfileSetup(true), 500);
-          }}
+          onUpdate={updateProfile}
+          onReset={() => { resetUserData(); setShowProfileSettings(false); setTimeout(() => setShowProfileSetup(true), 500); }}
           onClose={() => setShowProfileSettings(false)}
         />
       )}
@@ -520,98 +448,77 @@ function App() {
   );
 }
 
-// Status Indicator Component
-const StatusIndicator: React.FC<{ status: string }> = ({ status }) => {
-  const getStatusText = () => {
-    switch (status) {
-      case 'listening':
-        return 'Listening...';
-      case 'processing':
-        return 'Processing your request...';
-      case 'speaking':
-        return 'Speaking...';
-      case 'error':
-        return 'Something went wrong';
-      default:
-        return '';
-    }
-  };
+// ── ICON COMPONENTS ──────────────────────────────────────────────────────────
 
-  return (
-    <div className={`status-indicator__content status-indicator--${status}`}>
-      <div className="status-indicator__dot" />
-      <span className="status-indicator__text">{getStatusText()}</span>
-    </div>
-  );
-};
-
-// Icon Components
 const ThemeIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
   </svg>
 );
 
 const ClearIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
-const MicrophoneIcon = () => (
-  <svg
-    width="64"
-    height="64"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-    <line x1="12" y1="19" x2="12" y2="23" />
-    <line x1="8" y1="23" x2="16" y2="23" />
+const EmptyStateIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const SendIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </svg>
+);
+
+const MinimizeIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+    <rect x="1" y="5.5" width="10" height="1.5" rx="0.75" />
+  </svg>
+);
+
+const MaximizeIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="1" y="1" width="10" height="10" rx="1.5" />
+  </svg>
+);
+
+const RestoreIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <rect x="3" y="1" width="8" height="8" rx="1" />
+    <path d="M1 4v6a1 1 0 0 0 1 1h6" />
+  </svg>
+);
+
+const ResizeIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <line x1="9" y1="1" x2="1" y2="9" />
+    <line x1="9" y1="5" x2="5" y2="9" />
   </svg>
 );
 
 const WeatherIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path d="M12 2v2m0 16v2m10-10h-2M4 12H2m15.07 7.07l-1.41-1.41M8.34 8.34L6.93 6.93" />
-    <circle cx="12" cy="12" r="5" />
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+    <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
   </svg>
 );
 
 const RestaurantIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
   </svg>
 );
 
 const CarIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path d="M5 11l1.5-4.5h11L19 11m-1 3h.01M6 14h.01M5 17h14a2 2 0 0 0 2-2v-5H3v5a2 2 0 0 0 2 2Z" />
-    <circle cx="7" cy="14" r="1" />
-    <circle cx="17" cy="14" r="1" />
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M5 11l1.5-4.5h11L19 11m-1 3h.01M6 14h.01M5 17h14a2 2 0 0 0 2-2v-3H3v3a2 2 0 0 0 2 2Z" />
   </svg>
 );
 
