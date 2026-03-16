@@ -145,29 +145,46 @@ function App() {
   }, []);
 
   // ── RESIZE ────────────────────────────────────────────────────
+  // pointermove/up are on the document so they fire even when cursor
+  // moves outside the tiny 20×20 handle.
   const startResize = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
     e.stopPropagation();
+
+    // Snapshot the window's CURRENT rendered size from the DOM
+    const rect = chatWindowRef.current?.getBoundingClientRect();
     resizeState.current = {
       isResizing: true,
-      startX: e.clientX, startY: e.clientY,
-      startWidth: chatSize.width, startHeight: chatSize.height,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth:  rect ? rect.width  : chatSize.width,
+      startHeight: rect ? rect.height : chatSize.height,
     };
-    e.currentTarget.setPointerCapture(e.pointerId);
+
+    // Document-level handlers so resize works even when cursor leaves handle
+    const onMove = (ev: PointerEvent) => {
+      if (!resizeState.current.isResizing) return;
+      const dx = ev.clientX - resizeState.current.startX;
+      const dy = ev.clientY - resizeState.current.startY;
+      setChatSize({
+        width:  Math.max(300, Math.min(window.innerWidth  - 32, resizeState.current.startWidth  + dx)),
+        height: Math.max(300, Math.min(window.innerHeight - 32, resizeState.current.startHeight + dy)),
+      });
+    };
+
+    const onUp = () => {
+      resizeState.current.isResizing = false;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup',   onUp);
+    };
+
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup',   onUp);
   }, [chatSize]);
 
-  const onResizeMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (!resizeState.current.isResizing) return;
-    const dx = e.clientX - resizeState.current.startX;
-    const dy = e.clientY - resizeState.current.startY;
-    setChatSize({
-      width: Math.max(300, Math.min(720, resizeState.current.startWidth + dx)),
-      height: Math.max(360, Math.min(800, resizeState.current.startHeight + dy)),
-    });
-  }, []);
-
-  const endResize = useCallback(() => {
-    resizeState.current.isResizing = false;
-  }, []);
+  // These are kept as no-ops so the JSX compiles without changes
+  const onResizeMove = useCallback((_e: React.PointerEvent<HTMLDivElement>) => {}, []);
+  const endResize    = useCallback(() => {}, []);
 
   const toggleMinimize = () => {
     setChatWindowState(s => s === 'minimized' ? 'default' : 'minimized');
@@ -181,10 +198,17 @@ function App() {
   const chatWindowStyle: React.CSSProperties = (() => {
     if (chatWindowState === 'maximized') return {};
     const style: React.CSSProperties = {};
-    if (chatPosition.left !== -1) { style.left = chatPosition.left; style.top = chatPosition.top; style.right = 'auto'; style.bottom = 'auto'; }
+    // Always apply explicit size so resize changes take effect immediately
     if (chatWindowState !== 'minimized') {
-      style.width = chatSize.width;
+      style.width  = chatSize.width;
       style.height = chatSize.height;
+    }
+    // Override position only when user has dragged the window
+    if (chatPosition.left !== -1) {
+      style.left   = chatPosition.left;
+      style.top    = chatPosition.top;
+      style.right  = 'auto';
+      style.bottom = 'auto';
     }
     return style;
   })();

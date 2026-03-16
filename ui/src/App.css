@@ -265,7 +265,7 @@
   box-shadow: var(--shadow-2xl);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   transition: box-shadow 0.2s var(--ease-out);
 
   /* Default position: bottom-right corner */
@@ -527,19 +527,27 @@
 /* ── RESIZE HANDLE ── */
 .chat-window__resize-handle {
   position: absolute;
-  bottom: 4px; right: 4px;
-  width: 20px; height: 20px;
+  bottom: 0; right: 0;
+  /* Larger hit area — visually small, touch-friendly large */
+  width: 32px; height: 32px;
   cursor: se-resize;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 4px;
   color: var(--text-tertiary);
-  opacity: 0.5;
-  transition: opacity 0.15s;
-  touch-action: none;
+  opacity: 0.6;
+  transition: opacity 0.15s, color 0.15s;
+  touch-action: none;    /* critical — prevents scroll from stealing pointer */
+  user-select: none;
+  -webkit-user-select: none;
   border-radius: 0 0 var(--radius-lg) 0;
+  z-index: 20;           /* above body content */
 }
-.chat-window__resize-handle:hover { opacity: 1; }
+.chat-window__resize-handle:hover {
+  opacity: 1;
+  color: var(--primary);
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-3px); }
