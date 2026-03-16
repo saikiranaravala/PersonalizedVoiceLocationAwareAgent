@@ -18,7 +18,9 @@ from services.context import ContextManager
 from services.location import LocationService
 from tools.uber import UberTool
 from tools.weather import WeatherTool
-from tools.zomato import ZomatoTool
+from tools.weather import WeatherTool
+from tools.restaurant_finder import RestaurantFinder
+
 from utils.config import config
 from utils.logger import logger
 
@@ -92,12 +94,12 @@ class AgenticAssistant:
         )
         
         # Restaurant search tool
-        zomato_tool = ZomatoTool(self.location_service)
+        restaurant_tool = RestaurantFinder(self.location_service)
         tools.append(
             StructuredTool.from_function(
-                func=zomato_tool.execute,
-                name=zomato_tool.name,
-                description=zomato_tool.description,
+                func=restaurant_tool.execute,
+                name=restaurant_tool.name,
+                description=restaurant_tool.description,
             )
         )
         
