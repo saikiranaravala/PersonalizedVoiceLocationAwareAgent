@@ -99,6 +99,80 @@
   gap: var(--space-1);
 }
 
+/* ========================================
+   PROFILE AVATAR BUTTON
+   Always visible in header top-right
+   ======================================== */
+
+.profile-avatar-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-primary-300);
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+  margin-left: var(--space-1);
+  padding: 0;
+  outline: none;
+}
+
+.profile-avatar-btn:hover {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-500);
+  transform: scale(1.06);
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+}
+
+.profile-avatar-btn:focus-visible {
+  outline: 3px solid var(--color-primary-300);
+  outline-offset: 2px;
+}
+
+.profile-avatar-btn:active {
+  transform: scale(0.97);
+}
+
+/* Initials shown when profile has a name */
+.profile-avatar-btn__initials {
+  font-size: 12px;
+  font-weight: var(--font-bold);
+  letter-spacing: 0.03em;
+  line-height: 1;
+  color: var(--color-primary-700);
+  user-select: none;
+}
+
+/* Dark mode */
+[data-theme="dark"] .profile-avatar-btn {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: var(--color-primary-600);
+  color: var(--color-primary-400);
+}
+
+[data-theme="dark"] .profile-avatar-btn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: var(--color-primary-400);
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
+}
+
+[data-theme="dark"] .profile-avatar-btn__initials {
+  color: var(--color-primary-300);
+}
+
+/* High contrast */
+[data-theme="high-contrast"] .profile-avatar-btn {
+  border: 2px solid var(--text-primary);
+  background: transparent;
+  color: var(--text-primary);
+}
+
 .connection-dot {
   display: inline-block;
   width: 7px; height: 7px;
