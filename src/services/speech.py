@@ -1,129 +1,82 @@
-"""Speech recognition and text-to-speech services."""
+"""
+services/speech.py  —  Safe speech wrapper for headless server deployment
+==========================================================================
+On Render (and any headless Linux server), pyaudio / pyttsx3 / SpeechRecognition
+are not available. This module guards every import so the server starts cleanly.
 
-import speech_recognition as sr
-import pyttsx3
+Speech recognition and synthesis are handled client-side by the browser's
+Web Speech API. This module is only relevant for local desktop runs.
+"""
 
-from utils.config import config
+import os
 from utils.logger import logger
 
+# ── Feature flags ─────────────────────────────────────────────────────────────
+# Set ENABLE_LOCAL_SPEECH=true in your local .env to enable hardware audio.
+# On Render, leave it unset (defaults to False).
+_LOCAL_SPEECH_ENABLED = os.environ.get("ENABLE_LOCAL_SPEECH", "false").lower() == "true"
 
-class SpeechService:
-    """Service for speech recognition and text-to-speech."""
+# ── Conditional imports ───────────────────────────────────────────────────────
+_sr   = None   # SpeechRecognition
+_tts  = None   # pyttsx3
 
-    def __init__(self):
-        """Initialize speech service."""
-        self.recognizer = sr.Recognizer()
-        self.language = config.get("speech.language", "en-US")
-        
-        # Initialize TTS engine
-        try:
-            self.tts_engine = pyttsx3.init()
-            self.tts_engine.setProperty('rate', config.get("speech.rate", 150))
-            self.tts_engine.setProperty('volume', config.get("speech.volume", 0.9))
-            logger.info("Text-to-speech engine initialized")
-        except Exception as e:
-            logger.error(f"Failed to initialize TTS engine: {e}")
-            self.tts_engine = None
+if _LOCAL_SPEECH_ENABLED:
+    try:
+        import speech_recognition as _sr
+        logger.info("SpeechRecognition loaded (local mode)")
+    except ImportError:
+        logger.warning("SpeechRecognition not available — mic input disabled")
 
-    def listen(self, timeout: int = 5, phrase_time_limit: int = 10) -> str:
-        """Listen for voice input and convert to text.
+    try:
+        import pyttsx3 as _tts
+        logger.info("pyttsx3 loaded (local mode)")
+    except ImportError:
+        logger.warning("pyttsx3 not available — local TTS disabled")
+else:
+    logger.info("Local speech disabled (headless/server mode). Browser handles STT/TTS.")
 
-        Args:
-            timeout: Maximum time to wait for speech to start (seconds)
-            phrase_time_limit: Maximum time for phrase (seconds)
 
-        Returns:
-            Recognized text or empty string if failed
-        """
-        try:
-            with sr.Microphone() as source:
-                logger.info("Listening for voice input...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=1)
-                audio = self.recognizer.listen(
-                    source, 
-                    timeout=timeout, 
-                    phrase_time_limit=phrase_time_limit
-                )
-                
-                logger.info("Processing speech...")
-                text = self.recognizer.recognize_google(audio, language=self.language)
-                logger.info(f"Recognized: {text}")
-                return text
-                
-        except sr.WaitTimeoutError:
-            logger.warning("No speech detected within timeout")
-            return ""
-        except sr.UnknownValueError:
-            logger.warning("Could not understand audio")
-            return ""
-        except sr.RequestError as e:
-            logger.error(f"Speech recognition service error: {e}")
-            return ""
-        except Exception as e:
-            logger.error(f"Error during speech recognition: {e}")
-            return ""
+# ── Public API ────────────────────────────────────────────────────────────────
 
-    def speak(self, text: str) -> bool:
-        """Convert text to speech and play it.
+def is_speech_available() -> bool:
+    """Returns True only when running locally with audio hardware."""
+    return _LOCAL_SPEECH_ENABLED and _sr is not None
 
-        Args:
-            text: Text to convert to speech
 
-        Returns:
-            True if successful, False otherwise
-        """
-        if not text:
-            logger.warning("No text provided for speech synthesis")
-            return False
-            
-        if not self.tts_engine:
-            logger.error("TTS engine not available")
-            print(f"Assistant: {text}")  # Fallback to console output
-            return False
+def listen_from_microphone(timeout: int = 5) -> str:
+    """
+    Capture speech from microphone and return transcript.
+    Returns empty string on server / when unavailable.
+    """
+    if not is_speech_available():
+        logger.debug("listen_from_microphone called on headless server — skipped")
+        return ""
 
-        try:
-            logger.info(f"Speaking: {text}")
-            self.tts_engine.say(text)
-            self.tts_engine.runAndWait()
-            return True
-        except Exception as e:
-            logger.error(f"Error during text-to-speech: {e}")
-            print(f"Assistant: {text}")  # Fallback to console output
-            return False
+    try:
+        recognizer = _sr.Recognizer()
+        with _sr.Microphone() as source:
+            logger.info("Listening from microphone...")
+            audio = recognizer.listen(source, timeout=timeout)
+        text = recognizer.recognize_google(audio)
+        logger.info(f"Recognized: {text}")
+        return text
+    except Exception as e:
+        logger.warning(f"Speech recognition error: {e}")
+        return ""
 
-    def is_microphone_available(self) -> bool:
-        """Check if microphone is available.
 
-        Returns:
-            True if microphone is accessible, False otherwise
-        """
-        try:
-            with sr.Microphone() as source:
-                return True
-        except Exception as e:
-            logger.error(f"Microphone not available: {e}")
-            return False
+def speak_text(text: str) -> None:
+    """
+    Speak text via local TTS engine.
+    No-op on server / when unavailable (browser handles TTS).
+    """
+    if not _LOCAL_SPEECH_ENABLED or _tts is None:
+        logger.debug("speak_text called on headless server — skipped")
+        return
 
-    def test_microphone(self) -> bool:
-        """Test microphone and speech recognition.
-
-        Returns:
-            True if test successful, False otherwise
-        """
-        try:
-            logger.info("Testing microphone and speech recognition...")
-            self.speak("Please say something to test the microphone.")
-            
-            with sr.Microphone() as source:
-                logger.info("Speak now...")
-                self.recognizer.adjust_for_ambient_noise(source, duration=1)
-                audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
-                
-                text = self.recognizer.recognize_google(audio, language=self.language)
-                logger.info(f"Microphone test successful. Recognized: {text}")
-                self.speak(f"I heard: {text}")
-                return True
-                
-        except Exception as e:
-            logger.error(f"Microphone test failed: {e}")
-            return False
+    try:
+        engine = _tts.init()
+        engine.say(text)
+        engine.runAndWait()
+    except Exception as e:
+        logger.warning(f"TTS error: {e}")
