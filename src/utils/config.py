@@ -21,7 +21,7 @@ class Config:
         self.config_dir = self.base_dir / "config"
         
         # Load environment variables
-        env_path = self.config_dir / ".env"
+        env_path = self.base_dir / ".env"
         if env_path.exists():
             load_dotenv(env_path)
         
