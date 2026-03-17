@@ -15,7 +15,7 @@ export interface ConversationMessage {
 }
 
 export interface ActionPayload {
-  action: string;   // e.g. 'save_restaurant', 'save_uber_trip', 'update_preference'
+  action: string;
   data: Record<string, any>;
 }
 
@@ -26,7 +26,6 @@ export interface UseVoiceAssistantOptions {
   enableSpeechRecognition?: boolean;
   enableSpeechSynthesis?: boolean;
   userProfile?: any;
-  /** Called whenever the backend sends a structured action message */
   onAction?: (payload: ActionPayload) => void;
 }
 
@@ -41,7 +40,6 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     onAction,
   } = options;
 
-  // Keep onAction in a ref so handleBackendMessage always sees the latest version
   const onActionRef = useRef(onAction);
   useEffect(() => { onActionRef.current = onAction; }, [onAction]);
 
@@ -304,7 +302,6 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
         break;
         
       case 'action':
-        // Backend is requesting a frontend state update (save restaurant, trip, etc.)
         console.log('[Voice Assistant] Action from backend:', message.action, message.data);
         if (message.action && onActionRef.current) {
           onActionRef.current({ action: message.action, data: message.data || {} });

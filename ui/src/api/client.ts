@@ -4,14 +4,17 @@
  */
 
 export interface Message {
-  type: 'chat' | 'status' | 'response' | 'error' | 'pong';
+  type: 'chat' | 'status' | 'response' | 'error' | 'pong' | 'action';
   message?: string;
   status?: 'processing' | 'listening' | 'speaking';
   success?: boolean;
   intermediate_steps?: any[];
   timestamp?: number;
-  user_profile?: any;  // NEW: User profile data
-  user_agent?: string;  // NEW: Browser user agent
+  user_profile?: any;
+  user_agent?: string;
+  // Action message fields (backend → frontend preference persistence)
+  action?: string;
+  data?: Record<string, any>;
 }
 
 export interface ChatResponse {

@@ -4,7 +4,7 @@
 
 export type Gender = 'male' | 'female' | 'other' | 'prefer-not-to-say';
 export type AgeGroup = 'child' | 'teen' | 'adult' | 'senior';
-export type Title = 'Mr.' | 'Mrs.' | 'Ms.' | 'Miss' | 'Dr.' | 'Master' | '';
+export type Title = 'Mr.' | 'Mrs.' | 'Ms.' | 'Miss' | 'Dr.' | 'Master' | '' | string & {};
 
 export interface UserProfile {
   // Basic Info
