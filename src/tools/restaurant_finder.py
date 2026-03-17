@@ -4,7 +4,7 @@ import json
 import math
 import sys
 from typing import Union
-from tools import BaseTool
+from .base import BaseTool
 
 
 class RestaurantFinder(BaseTool):

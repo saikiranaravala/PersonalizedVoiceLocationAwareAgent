@@ -14,13 +14,20 @@ export interface ConversationMessage {
   timestamp: Date;
 }
 
+export interface ActionPayload {
+  action: string;   // e.g. 'save_restaurant', 'save_uber_trip', 'update_preference'
+  data: Record<string, any>;
+}
+
 export interface UseVoiceAssistantOptions {
   backendUrl?: string;
   sessionId?: string;
   autoConnect?: boolean;
   enableSpeechRecognition?: boolean;
   enableSpeechSynthesis?: boolean;
-  userProfile?: any;  // NEW: User profile data
+  userProfile?: any;
+  /** Called whenever the backend sends a structured action message */
+  onAction?: (payload: ActionPayload) => void;
 }
 
 export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
@@ -30,8 +37,13 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     autoConnect = true,
     enableSpeechRecognition = true,
     enableSpeechSynthesis = true,
-    userProfile,  // Extract user profile
+    userProfile,
+    onAction,
   } = options;
+
+  // Keep onAction in a ref so handleBackendMessage always sees the latest version
+  const onActionRef = useRef(onAction);
+  useEffect(() => { onActionRef.current = onAction; }, [onAction]);
 
   // Use ref to track latest userProfile value (updates when profile changes)
   const userProfileRef = useRef(userProfile);
@@ -291,6 +303,14 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
         }, 3000);
         break;
         
+      case 'action':
+        // Backend is requesting a frontend state update (save restaurant, trip, etc.)
+        console.log('[Voice Assistant] Action from backend:', message.action, message.data);
+        if (message.action && onActionRef.current) {
+          onActionRef.current({ action: message.action, data: message.data || {} });
+        }
+        break;
+
       default:
         console.warn('[Voice Assistant] Unknown message type:', message.type);
     }

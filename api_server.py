@@ -244,6 +244,15 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 }, session_id)
                 
                 try:
+                    # Inject WebSocket sender so SaveRestaurantTool / SaveUberTripTool
+                    # can push {"type":"action",...} messages to the frontend,
+                    # which persists them to browser localStorage.
+                    def ws_send(msg: str):
+                        asyncio.create_task(
+                            manager.active_connections[session_id].send_text(msg)
+                        )
+                    assistant.set_websocket_sender(ws_send)
+
                     # Process with assistant (pass user context)
                     result = assistant.process_request(
                         user_message,
@@ -288,9 +297,11 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     
     except WebSocketDisconnect:
         manager.disconnect(session_id)
+        assistant.set_websocket_sender(None)   # clear stale sender on clean disconnect
     except Exception as e:
         print(f"WebSocket error for {session_id}: {e}")
         manager.disconnect(session_id)
+        assistant.set_websocket_sender(None)   # clear stale sender on error disconnect
 
 # ============================================
 # Serve Static Files (Production)

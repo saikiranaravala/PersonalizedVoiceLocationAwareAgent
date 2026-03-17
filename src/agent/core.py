@@ -18,8 +18,8 @@ from services.context import ContextManager
 from services.location import LocationService
 from tools.uber import UberTool
 from tools.weather import WeatherTool
-from tools.weather import WeatherTool
 from tools.restaurant_finder import RestaurantFinder
+from tools.save_preferences_tool import SaveRestaurantTool, SaveUberTripTool
 
 from utils.config import config
 from utils.logger import logger
@@ -63,6 +63,11 @@ class AgenticAssistant:
         # Get current location and set context
         current_location = self.location_service.get_current_location()
         self.context_manager.set_location(current_location)
+
+        # WebSocket sender — injected per-request via set_websocket_sender().
+        # SaveRestaurantTool and SaveUberTripTool use this to push action
+        # messages back to the frontend so it can persist to localStorage.
+        self._ws_sender = None
         
         # Initialize tools FIRST (before LLM)
         self.tools = self._initialize_tools()
@@ -129,6 +134,27 @@ class AgenticAssistant:
             )
         )
         
+        # Save Restaurant tool — persists favorite restaurants to frontend localStorage
+        # websocket_sender is None at init; injected per-request via set_websocket_sender()
+        self.save_restaurant_tool = SaveRestaurantTool()
+        tools.append(
+            StructuredTool.from_function(
+                func=self.save_restaurant_tool.execute,
+                name=self.save_restaurant_tool.name,
+                description=self.save_restaurant_tool.description,
+            )
+        )
+
+        # Save Uber Trip tool — persists trip history to frontend localStorage
+        self.save_uber_trip_tool = SaveUberTripTool()
+        tools.append(
+            StructuredTool.from_function(
+                func=self.save_uber_trip_tool.execute,
+                name=self.save_uber_trip_tool.name,
+                description=self.save_uber_trip_tool.description,
+            )
+        )
+
         logger.info(f"Initialized {len(tools)} tools")
         return tools
 
@@ -219,6 +245,27 @@ class AgenticAssistant:
         
         logger.info("Agent executor initialized")
         return agent_executor
+
+    def set_websocket_sender(self, sender) -> None:
+        """Inject the WebSocket send function for the current request.
+
+        Must be called once per WebSocket connection (or per request) so that
+        SaveRestaurantTool and SaveUberTripTool can push `action` messages back
+        to the frontend, which then persists data to browser localStorage.
+
+        Args:
+            sender: Callable that accepts a JSON string and sends it over WS.
+                    Pass None to clear (e.g. when a connection closes).
+
+        Example (FastAPI):
+            def ws_send(msg: str):
+                asyncio.create_task(websocket.send_text(msg))
+            assistant.set_websocket_sender(ws_send)
+        """
+        self._ws_sender = sender
+        self.save_restaurant_tool.websocket_sender = sender
+        self.save_uber_trip_tool.websocket_sender = sender
+        logger.debug(f"WebSocket sender {'set' if sender else 'cleared'}")
 
     def process_request(self, user_input: str, user_agent: str = None, 
                        user_profile: dict = None) -> Dict[str, Any]:

@@ -43,6 +43,7 @@ function App() {
 
   const {
     isProfileSetup, profile, getGreeting, updateProfile, resetUserData,
+    addRestaurantVisit, addUberTrip,
   } = useUserProfile();
 
   const {
@@ -55,6 +56,45 @@ function App() {
     enableSpeechRecognition: true,
     enableSpeechSynthesis: true,
     userProfile: profile,
+    // ── Action handler: backend -> frontend preference persistence ────────────
+    onAction: ({ action, data }) => {
+      console.log('[App] Backend action received:', action, data);
+      switch (action) {
+        case 'save_restaurant':
+          // Backend sends: { name, address, cuisine, rating?, notes? }
+          if (data.name) {
+            addRestaurantVisit({
+              name:    data.name,
+              address: data.address || '',
+              cuisine: data.cuisine || '',
+              rating:  data.rating,
+              notes:   data.notes,
+            });
+            console.log('[App] Saved restaurant to localStorage:', data.name);
+          }
+          break;
+
+        case 'save_uber_trip':
+          // Backend sends: { destination, destinationAddress, purpose? }
+          if (data.destination) {
+            addUberTrip({
+              destination:        data.destination,
+              destinationAddress: data.destinationAddress || '',
+              purpose:            data.purpose,
+            });
+            console.log('[App] Saved Uber trip to localStorage:', data.destination);
+          }
+          break;
+
+        case 'update_preferred_cuisine':
+          // Backend sends: { cuisine: string }
+          // Handled via addRestaurantVisit which auto-adds cuisine to preferredCuisines
+          break;
+
+        default:
+          console.warn('[App] Unknown backend action:', action);
+      }
+    },
   });
 
   const [showProfileSetup, setShowProfileSetup] = useState(false);
@@ -274,19 +314,6 @@ function App() {
               {conversation.length > 0 && (
                 <Button variant="ghost" size="sm" iconOnly={<ClearIcon />} onClick={clearConversation} aria-label="Clear conversation" />
               )}
-              {/* Profile avatar button — always visible */}
-              <button
-                className="profile-avatar-btn"
-                onClick={() => isProfileSetup ? setShowProfileSettings(true) : setShowProfileSetup(true)}
-                aria-label="Edit profile"
-                title={isProfileSetup && profile ? `Profile: ${profile.name || 'Edit Profile'}` : 'Set up profile'}
-                type="button"
-              >
-                {isProfileSetup && profile?.name
-                  ? <span className="profile-avatar-btn__initials">{profile.name.trim().split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
-                  : <ProfileIcon />
-                }
-              </button>
             </div>
           </div>
         </div>
@@ -563,13 +590,6 @@ const RestaurantIcon = () => (
 const CarIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M5 11l1.5-4.5h11L19 11m-1 3h.01M6 14h.01M5 17h14a2 2 0 0 0 2-2v-3H3v3a2 2 0 0 0 2 2Z" />
-  </svg>
-);
-
-const ProfileIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-    <circle cx="12" cy="7" r="4" />
   </svg>
 );
 
