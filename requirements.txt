@@ -14,10 +14,13 @@ uvicorn[standard]>=0.27.0
 websockets>=12.0
 python-multipart>=0.0.6
 
-# Speech Processing
-SpeechRecognition==3.10.4
-pyttsx3==2.90
-pyaudio==0.2.14
+# ── Speech Processing ──────────────────────────────────────────────────────────
+# pyaudio==0.2.14    REMOVED: requires portaudio C library not available on Render
+# pyttsx3==2.90      REMOVED: requires local audio hardware (headless server)
+# SpeechRecognition==3.10.4  REMOVED: mic input not available server-side
+# Speech is handled entirely client-side via the Web Speech API in the browser.
+# If server-side STT/TTS is needed in future, use openai Whisper API instead:
+#   openai>=1.30.1 already covers this via client.audio.transcriptions.create()
 
 # Location Services
 geocoder==1.38.1
