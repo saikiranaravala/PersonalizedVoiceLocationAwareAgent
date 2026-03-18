@@ -267,6 +267,41 @@ class AgenticAssistant:
         self.save_uber_trip_tool.websocket_sender = sender
         logger.debug(f"WebSocket sender {'set' if sender else 'cleared'}")
 
+
+    @staticmethod
+    def _extract_location_from_profile(user_profile: dict) -> Optional[Dict[str, Any]]:
+        """Extract location dict from the frontend user_profile payload.
+
+        Returns a dict compatible with ContextManager.set_location(),
+        or None if the profile contains no usable location data.
+        Handles both camelCase keys (from the React frontend) and plain lowercase.
+        """
+        if not user_profile or not isinstance(user_profile, dict):
+            return None
+
+        # Support camelCase (frontend) keys
+        city    = user_profile.get('city')    or user_profile.get('City', '')
+        state   = user_profile.get('state')   or user_profile.get('State', '')
+        country = (user_profile.get('country') or user_profile.get('Country') or 'US')
+        address = user_profile.get('address') or user_profile.get('Address', '')
+
+        if not city and not address:
+            return None  # Not enough info — let server IP detection run
+
+        # Build a human-readable address string for context
+        parts = [p for p in [address, city, state, country] if p]
+        full_address = ', '.join(parts)
+
+        return {
+            'address':   full_address,
+            'city':      city,
+            'state':     state,
+            'country':   country,
+            'latitude':  None,
+            'longitude': None,
+            'source':    'user_profile',
+        }
+
     def process_request(self, user_input: str, user_agent: str = None, 
                        user_profile: dict = None) -> Dict[str, Any]:
         """Process a user request with context.
@@ -289,9 +324,20 @@ class AgenticAssistant:
         self.context_manager.add_to_history("user", user_input)
         
         try:
-            # Update context with latest location
-            current_location = self.location_service.get_current_location()
-            self.context_manager.set_location(current_location)
+            # Resolve location: user profile takes priority over server IP.
+            # Frontend sends user_profile with city/state from localStorage.
+            location_from_profile = self._extract_location_from_profile(user_profile)
+
+            if location_from_profile:
+                self.context_manager.set_location(location_from_profile)
+                logger.info(
+                    f"Using user profile location: "
+                    f"{location_from_profile.get('address', 'unknown')}"
+                )
+            else:
+                current_location = self.location_service.get_current_location()
+                self.context_manager.set_location(current_location)
+                logger.info('No profile location — using server IP location')
             
             # Get conversation history for context
             history = self.context_manager.get_history(limit=5)
