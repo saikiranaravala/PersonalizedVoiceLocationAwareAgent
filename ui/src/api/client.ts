@@ -3,6 +3,26 @@
  * Handles WebSocket and REST communication
  */
 
+// ── Environment-aware URL resolution ─────────────────────────────────────────
+// Reads VITE_WS_URL / VITE_API_URL from .env; falls back to localhost for dev.
+// wss:// is required on HTTPS origins (Render, Vercel, etc.)
+function getWsBaseUrl(): string {
+  const envWs = import.meta.env.VITE_WS_URL as string | undefined;
+  if (envWs) {
+    // Normalise: ensure wss:// on https pages, ws:// on http pages
+    if (window.location.protocol === 'https:') {
+      return envWs.replace(/^ws:\/\//, 'wss://');
+    }
+    return envWs;
+  }
+  return 'ws://localhost:8000';
+}
+
+function getApiBaseUrl(): string {
+  const envApi = import.meta.env.VITE_API_URL as string | undefined;
+  return envApi || 'http://localhost:8000';
+}
+
 export interface Message {
   type: 'chat' | 'status' | 'response' | 'error' | 'pong' | 'action';
   message?: string;
@@ -39,7 +59,7 @@ export class WebSocketClient {
   public onClose: () => void = () => {};
   public onError: (error: Event) => void = () => {};
 
-  constructor(url: string = 'ws://localhost:8000', sessionId?: string) {
+  constructor(url: string = getWsBaseUrl(), sessionId?: string) {
     this.url = url;
     this.sessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -174,7 +194,7 @@ export class WebSocketClient {
 export class APIClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string = 'http://localhost:8000') {
+  constructor(baseUrl: string = getApiBaseUrl()) {
     this.baseUrl = baseUrl;
   }
 
@@ -228,4 +248,4 @@ export class APIClient {
 }
 
 // Export singleton instances
-export const apiClient = new APIClient();
+export const apiClient = new APIClient(getApiBaseUrl());

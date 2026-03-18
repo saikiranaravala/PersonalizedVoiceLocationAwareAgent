@@ -51,7 +51,11 @@ function App() {
     startListening, stopListening, stopSpeaking, sendTextMessage,
     clearConversation, reconnect,
   } = useVoiceAssistant({
-    backendUrl: 'ws://localhost:8000',
+    backendUrl: (() => {
+      const raw = import.meta.env.VITE_WS_URL as string | undefined;
+      if (!raw) return 'ws://localhost:8000';
+      return window.location.protocol === 'https:' ? raw.replace(/^ws:\/\//, 'wss://') : raw;
+    })(),
     autoConnect: true,
     enableSpeechRecognition: true,
     enableSpeechSynthesis: true,

@@ -31,7 +31,7 @@ export interface UseVoiceAssistantOptions {
 
 export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
   const {
-    backendUrl = 'ws://localhost:8000',
+    backendUrl = (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_WS_URL)) ? (window.location.protocol === 'https:' ? (import.meta.env.VITE_WS_URL as string).replace(/^ws:\/\//, 'wss://') : import.meta.env.VITE_WS_URL as string) : 'ws://localhost:8000',
     sessionId,
     autoConnect = true,
     enableSpeechRecognition = true,
