@@ -407,21 +407,8 @@ class AgenticAssistant:
             ]
             
             # Execute agent
-            # Rebuild context summary per-request so location reflects
-            # the user profile, not the stale startup location
-            current_context = self.context_manager.get_context_summary()
-            system_prompt = format_system_prompt(current_context)
-
-            # Re-create the prompt with fresh context and update the agent
-            from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-            fresh_prompt = ChatPromptTemplate.from_messages([
-                ("system", system_prompt),
-                MessagesPlaceholder(variable_name="chat_history", optional=True),
-                ("human", "{input}"),
-                MessagesPlaceholder(variable_name="agent_scratchpad"),
-            ])
-            self.agent_executor.agent.runnable.first.bound.first = fresh_prompt
-            # Simpler fallback: pass location directly in the input context
+            # Inject current location directly into the user message so the LLM
+            # always uses the right location — works regardless of LangChain internals.
             location = self.context_manager.get_location()
             location_hint = ""
             if location:
@@ -431,9 +418,9 @@ class AgenticAssistant:
                 loc_str = f"{city}, {state}" if city and state else address
                 if loc_str:
                     location_hint = (
-                        f"[CONTEXT: The user's current location is {loc_str}. "
-                        "Use this location for all weather, restaurant, and ride queries "
-                        "unless the user explicitly asks about a different place.]\n\n"
+                        f"[SYSTEM CONTEXT - User location: {loc_str}. "
+                        "Always use this location for weather, restaurants, and ride queries "
+                        "unless the user explicitly specifies a different place.]\n\n"
                     )
 
             result = self.agent_executor.invoke({
