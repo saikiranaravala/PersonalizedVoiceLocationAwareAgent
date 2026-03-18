@@ -49,6 +49,43 @@ def create_openrouter_llm(model_name: str, temperature: float, api_key: str, bas
     )
 
 
+class LocationContextAdapter:
+    """Adapter that wraps ContextManager to look like a LocationService.
+
+    Tools call get_current_location() expecting lat/lon from the server.
+    This adapter intercepts that call and returns the user-profile location
+    stored in ContextManager instead, falling back to real LocationService
+    only when no profile location is available.
+    """
+
+    def __init__(self, context_manager: "ContextManager", fallback_service: "LocationService"):
+        self._ctx = context_manager
+        self._fallback = fallback_service
+
+    # Called by RestaurantFinder._coords_from_service (ContextManager path)
+    def get_location(self):
+        return self._ctx.get_location()
+
+    # Called by WeatherTool, UberTool, and RestaurantFinder._coords_from_service (LocationService path)
+    def get_current_location(self):
+        loc = self._ctx.get_location()
+        if loc and (loc.get("latitude") or loc.get("city")):
+            # Return context location — has user profile data
+            return loc
+        # Fallback to real GPS/IP detection
+        return self._fallback.get_current_location()
+
+    # Proxy any other LocationService methods tools might call
+    def geocode_address(self, address: str):
+        return self._fallback.geocode_address(address)
+
+    def reverse_geocode(self, latitude: float, longitude: float):
+        return self._fallback.reverse_geocode(latitude, longitude)
+
+    def get_distance(self, lat1, lon1, lat2, lon2):
+        return self._fallback.get_distance(lat1, lon1, lat2, lon2)
+
+
 class AgenticAssistant:
     """Main agentic assistant orchestrator."""
 
@@ -59,10 +96,16 @@ class AgenticAssistant:
         # Initialize services
         self.location_service = LocationService()
         self.context_manager = ContextManager()
-        
-        # Get current location and set context
+
+        # Get current location and set as initial context
         current_location = self.location_service.get_current_location()
         self.context_manager.set_location(current_location)
+
+        # Adapter: gives all tools a single location_service interface
+        # that returns user-profile location when available, server IP otherwise
+        self.location_adapter = LocationContextAdapter(
+            self.context_manager, self.location_service
+        )
 
         # WebSocket sender — injected per-request via set_websocket_sender().
         # SaveRestaurantTool and SaveUberTripTool use this to push action
@@ -89,7 +132,7 @@ class AgenticAssistant:
         tools = []
         
         # Weather tool
-        weather_tool = WeatherTool(self.location_service)
+        weather_tool = WeatherTool(self.location_adapter)
         tools.append(
             StructuredTool.from_function(
                 func=weather_tool.execute,
@@ -99,7 +142,7 @@ class AgenticAssistant:
         )
         
         # Restaurant search tool
-        restaurant_tool = RestaurantFinder(self.location_service)
+        restaurant_tool = RestaurantFinder(self.location_adapter)
         tools.append(
             StructuredTool.from_function(
                 func=restaurant_tool.execute,
@@ -109,7 +152,7 @@ class AgenticAssistant:
         )
         
         # Uber booking tool
-        self.uber_tool = UberTool(self.location_service)
+        self.uber_tool = UberTool(self.location_adapter)
         
         # Create wrapper that adds context (user_agent, user_profile)
         def uber_execute_with_context(destination: str, pickup: str = None, **kwargs):
@@ -268,37 +311,54 @@ class AgenticAssistant:
         logger.debug(f"WebSocket sender {'set' if sender else 'cleared'}")
 
 
-    @staticmethod
-    def _extract_location_from_profile(user_profile: dict) -> Optional[Dict[str, Any]]:
-        """Extract location dict from the frontend user_profile payload.
+    def _extract_location_from_profile(self, user_profile: dict) -> Optional[Dict[str, Any]]:
+        """Extract and geocode location from the frontend user_profile payload.
 
-        Returns a dict compatible with ContextManager.set_location(),
-        or None if the profile contains no usable location data.
-        Handles both camelCase keys (from the React frontend) and plain lowercase.
+        Reads city/state/address from the React frontend profile (camelCase keys),
+        geocodes to real lat/lon via Nominatim so ALL tools get accurate coordinates,
+        then returns a dict compatible with ContextManager.set_location().
+        Returns None if the profile has no usable location data.
         """
         if not user_profile or not isinstance(user_profile, dict):
             return None
 
-        # Support camelCase (frontend) keys
-        city    = user_profile.get('city')    or user_profile.get('City', '')
-        state   = user_profile.get('state')   or user_profile.get('State', '')
-        country = (user_profile.get('country') or user_profile.get('Country') or 'US')
+        city    = user_profile.get('city')    or user_profile.get('City',    '')
+        state   = user_profile.get('state')   or user_profile.get('State',   '')
+        country = user_profile.get('country') or user_profile.get('Country') or 'US'
         address = user_profile.get('address') or user_profile.get('Address', '')
 
         if not city and not address:
-            return None  # Not enough info — let server IP detection run
+            return None
 
-        # Build a human-readable address string for context
+        # Build a human-readable address string
         parts = [p for p in [address, city, state, country] if p]
         full_address = ', '.join(parts)
+
+        # Geocode city+state to real lat/lon so tools get accurate coordinates
+        # Use "city, state" as it geocodes more reliably than a street address
+        geocode_query = f"{city}, {state}" if city and state else city or address
+        latitude, longitude = None, None
+        try:
+            from tools.restaurant_finder import RestaurantFinder
+            lat, lon = RestaurantFinder._geocode_city(geocode_query)
+            latitude, longitude = lat, lon
+            logger.info(
+                f"Geocoded user profile location '{geocode_query}' "
+                f"→ ({latitude:.4f}, {longitude:.4f})"
+            )
+        except Exception as e:
+            logger.warning(
+                f"Could not geocode profile location '{geocode_query}': {e}. "
+                f"Tools will geocode on demand."
+            )
 
         return {
             'address':   full_address,
             'city':      city,
             'state':     state,
             'country':   country,
-            'latitude':  None,
-            'longitude': None,
+            'latitude':  latitude,
+            'longitude': longitude,
             'source':    'user_profile',
         }
 
@@ -347,8 +407,37 @@ class AgenticAssistant:
             ]
             
             # Execute agent
+            # Rebuild context summary per-request so location reflects
+            # the user profile, not the stale startup location
+            current_context = self.context_manager.get_context_summary()
+            system_prompt = format_system_prompt(current_context)
+
+            # Re-create the prompt with fresh context and update the agent
+            from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+            fresh_prompt = ChatPromptTemplate.from_messages([
+                ("system", system_prompt),
+                MessagesPlaceholder(variable_name="chat_history", optional=True),
+                ("human", "{input}"),
+                MessagesPlaceholder(variable_name="agent_scratchpad"),
+            ])
+            self.agent_executor.agent.runnable.first.bound.first = fresh_prompt
+            # Simpler fallback: pass location directly in the input context
+            location = self.context_manager.get_location()
+            location_hint = ""
+            if location:
+                city    = location.get("city", "")
+                state   = location.get("state", "")
+                address = location.get("address", "")
+                loc_str = f"{city}, {state}" if city and state else address
+                if loc_str:
+                    location_hint = (
+                        f"[CONTEXT: The user's current location is {loc_str}. "
+                        "Use this location for all weather, restaurant, and ride queries "
+                        "unless the user explicitly asks about a different place.]\n\n"
+                    )
+
             result = self.agent_executor.invoke({
-                "input": user_input,
+                "input": location_hint + user_input,
                 "chat_history": chat_history,
             })
             
