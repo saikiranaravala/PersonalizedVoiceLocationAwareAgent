@@ -40,8 +40,8 @@ def print_info(message: str):
     print(f"  {Colors.BLUE}ℹ{Colors.END} {message}")
 
 # Test configuration
-BACKEND_URL = "http://localhost:8000"
-WS_URL = "ws://localhost:8000"
+BACKEND_URL = "https://apiforpvlaagent.onrender.com"  #"http://localhost:8000"
+WS_URL = "wss://apiforpvlaagent.onrender.com" #"ws://localhost:8000"
 SESSION_ID = "test_session_123"
 
 def test_health_check() -> bool:
