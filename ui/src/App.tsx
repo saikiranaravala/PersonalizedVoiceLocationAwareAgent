@@ -318,6 +318,19 @@ function App() {
               {conversation.length > 0 && (
                 <Button variant="ghost" size="sm" iconOnly={<ClearIcon />} onClick={clearConversation} aria-label="Clear conversation" />
               )}
+              {/* Profile avatar button — always visible */}
+              <button
+                className="profile-avatar-btn"
+                onClick={() => isProfileSetup ? setShowProfileSettings(true) : setShowProfileSetup(true)}
+                aria-label="Edit profile"
+                title={isProfileSetup && profile ? `Profile: ${profile.name || 'Edit Profile'}` : 'Set up profile'}
+                type="button"
+              >
+                {isProfileSetup && profile?.name
+                  ? <span className="profile-avatar-btn__initials">{profile.name.trim().split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+                  : <ProfileIcon />
+                }
+              </button>
             </div>
           </div>
         </div>
