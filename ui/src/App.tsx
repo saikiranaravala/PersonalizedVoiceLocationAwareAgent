@@ -323,11 +323,11 @@ function App() {
                 className="profile-avatar-btn"
                 onClick={() => isProfileSetup ? setShowProfileSettings(true) : setShowProfileSetup(true)}
                 aria-label="Edit profile"
-                title={isProfileSetup && profile ? `Profile: ${profile.name || 'Edit Profile'}` : 'Set up profile'}
+                title={isProfileSetup && profile ? `Profile: ${profile.firstName || 'Edit Profile'}` : 'Set up profile'}
                 type="button"
               >
-                {isProfileSetup && profile?.name
-                  ? <span className="profile-avatar-btn__initials">{profile.name.trim().split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
+                {isProfileSetup && profile?.firstName
+                  ? <span className="profile-avatar-btn__initials">{[profile.firstName, profile.lastName].filter(Boolean).join(' ').trim().split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()}</span>
                   : <ProfileIcon />
                 }
               </button>
