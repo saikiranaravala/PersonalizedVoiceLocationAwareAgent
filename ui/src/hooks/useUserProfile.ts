@@ -138,6 +138,7 @@ export function useUserProfile() {
         gender: profile.gender || 'prefer-not-to-say',
         age: profile.age,
         title: profile.title || getTitle(profile.gender || 'prefer-not-to-say', profile.age),
+        address: profile.address,  // ← was missing: address not saved on first setup
         city: profile.city || 'Erie',
         state: profile.state || 'Pennsylvania',
         country: profile.country || 'US',
