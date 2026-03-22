@@ -268,15 +268,41 @@ class RestaurantFinder(BaseTool):
 
     @staticmethod
     def _geocode_city(city_name: str) -> tuple:
-        """Convert a city name string → (lat, lon) using free Nominatim API."""
+        """Convert a city name string → (lat, lon) using free Nominatim API.
+
+        Includes retry with exponential backoff to handle 429 rate-limit
+        responses from Nominatim (max 1 req/sec per their usage policy).
+        """
+        import time
         params = urllib.parse.urlencode({"q": city_name, "format": "json", "limit": 1})
         url = f"https://nominatim.openstreetmap.org/search?{params}"
-        req = urllib.request.Request(url, headers={"User-Agent": "RestaurantFinder/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            results = json.loads(resp.read().decode())
-        if not results:
-            raise ValueError(f"Could not geocode city: '{city_name}'")
-        return float(results[0]["lat"]), float(results[0]["lon"])
+        headers = {
+            "User-Agent": "PersonalizedAgenticAssistant/1.0 (contact: admin@localhost)",
+        }
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Nominatim policy: max 1 request/second — always sleep before calling
+                time.sleep(1.1 * (attempt + 1))
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    results = json.loads(resp.read().decode())
+                if not results:
+                    raise ValueError(f"Could not geocode city: '{city_name}'")
+                return float(results[0]["lat"]), float(results[0]["lon"])
+            except urllib.error.HTTPError as e:
+                if e.code == 429 and attempt < max_retries - 1:
+                    wait = 2 ** (attempt + 1)  # 2s, 4s
+                    from utils.logger import logger
+                    logger.warning(
+                        f"Nominatim rate-limited (429) for '{city_name}' — "
+                        f"retrying in {wait}s (attempt {attempt + 1}/{max_retries})"
+                    )
+                    time.sleep(wait)
+                    continue
+                raise
+        raise ValueError(f"Could not geocode city after {max_retries} attempts: '{city_name}'"  )
 
     # ──────────────────────────────────────────────
     # 2. SEARCH RESTAURANTS VIA OVERPASS API

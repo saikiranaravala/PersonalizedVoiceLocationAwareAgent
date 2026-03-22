@@ -335,12 +335,15 @@ class AgenticAssistant:
         parts = [p for p in [address, city, state, country] if p]
         full_address = ', '.join(parts)
 
-        # Geocode city+state to real lat/lon so tools get accurate coordinates
-        # Use "city, state" as it geocodes more reliably than a street address
+        # Geocode city+state to real lat/lon so tools get accurate coordinates.
+        # Use "city, state" as it geocodes more reliably than a street address.
+        # NOTE: Nominatim enforces 1 req/sec — _geocode_city handles retry/backoff.
         geocode_query = f"{city}, {state}" if city and state else city or address
         latitude, longitude = None, None
         try:
+            import time
             from tools.restaurant_finder import RestaurantFinder
+            time.sleep(1.1)  # Respect Nominatim rate limit before first call
             lat, lon = RestaurantFinder._geocode_city(geocode_query)
             latitude, longitude = lat, lon
             logger.info(
