@@ -67,13 +67,14 @@ class LocationContextAdapter:
         return self._ctx.get_location()
 
     # Called by WeatherTool, UberTool, and RestaurantFinder._coords_from_service (LocationService path)
-    def get_current_location(self):
+    def get_current_location(self, client_ip: str = None):
         loc = self._ctx.get_location()
         if loc and (loc.get("latitude") or loc.get("city")):
             # Return context location — has user profile data
             return loc
-        # Fallback to real GPS/IP detection
-        return self._fallback.get_current_location()
+        # Fallback to real GPS/IP detection — use client IP so we geolocate
+        # the USER not the cloud server.
+        return self._fallback.get_current_location(client_ip=client_ip)
 
     # Proxy any other LocationService methods tools might call
     def geocode_address(self, address: str):
@@ -362,14 +363,18 @@ class AgenticAssistant:
             'source':    'user_profile',
         }
 
-    def process_request(self, user_input: str, user_agent: str = None, 
-                       user_profile: dict = None) -> Dict[str, Any]:
+    def process_request(self, user_input: str, user_agent: str = None,
+                       user_profile: dict = None,
+                       client_ip: str = None) -> Dict[str, Any]:
         """Process a user request with context.
         
         Args:
             user_input: User's input text
             user_agent: HTTP User-Agent header for device detection
             user_profile: User profile data (name, address, preferences, etc.)
+            client_ip: Real client IP forwarded from WebSocket headers.
+                       Used to geolocate the USER not the cloud server when
+                       no profile location is available.
             
         Returns:
             Response dictionary with output and metadata
@@ -379,6 +384,10 @@ class AgenticAssistant:
         # Store context for tool wrappers to access
         self._current_user_agent = user_agent
         self._current_user_profile = user_profile
+        # Store client IP on both the adapter and the fallback service so all
+        # tools that call get_current_location() geolocate the client, not server.
+        self.location_adapter._client_ip = client_ip
+        self.location_service._client_ip = client_ip
         
         # Add to conversation history
         self.context_manager.add_to_history("user", user_input)
@@ -395,9 +404,12 @@ class AgenticAssistant:
                     f"{location_from_profile.get('address', 'unknown')}"
                 )
             else:
-                current_location = self.location_service.get_current_location()
+                # Pass client_ip so geolocation targets Erie, PA not Columbus, OH
+                current_location = self.location_service.get_current_location(client_ip=client_ip)
                 self.context_manager.set_location(current_location)
-                logger.info('No profile location — using server IP location')
+                logger.info(
+                    f"No profile location — using {'client' if client_ip else 'server'} IP location"
+                )
             
             # Get conversation history for context
             history = self.context_manager.get_history(limit=5)
