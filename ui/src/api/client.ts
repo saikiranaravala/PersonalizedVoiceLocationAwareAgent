@@ -32,6 +32,8 @@ export interface Message {
   timestamp?: number;
   user_profile?: any;
   user_agent?: string;
+  // Client IP forwarded so backend geolocates the user, not the server
+  client_ip?: string;
   // Action message fields (backend → frontend preference persistence)
   action?: string;
   data?: Record<string, any>;
@@ -137,7 +139,7 @@ export class WebSocketClient {
   /**
    * Send a chat message
    */
-  sendMessage(message: string, user_profile?: any, user_agent?: string): void {
+  sendMessage(message: string, user_profile?: any, user_agent?: string, client_ip?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.error('[WebSocket] Connection not open');
       throw new Error('WebSocket not connected');
@@ -147,8 +149,9 @@ export class WebSocketClient {
       type: 'chat',
       message: message,
       timestamp: Date.now(),
-      user_profile: user_profile,  // Include user profile
-      user_agent: user_agent || navigator.userAgent  // Include user agent
+      user_profile: user_profile,
+      user_agent: user_agent || navigator.userAgent,
+      client_ip: client_ip ?? undefined,  // Real client IP for server-side geolocation
     };
 
     console.log('[WebSocket] Sending:', payload);

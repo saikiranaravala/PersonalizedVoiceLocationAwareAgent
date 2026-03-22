@@ -192,6 +192,13 @@ manager = ConnectionManager()
 
 @app.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    # Capture the real client IP as early as possible.
+    # X-Forwarded-For is set by Nginx/load-balancers; fall back to direct peer IP.
+    client_ip: Optional[str] = (
+        websocket.headers.get("x-forwarded-for", "").split(",")[0].strip()
+        or websocket.headers.get("x-real-ip", "")
+        or (websocket.client.host if websocket.client else None)
+    ) or None
     """
     WebSocket endpoint for real-time communication
     
@@ -231,10 +238,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 user_message = data.get("message", "")
                 user_profile = data.get("user_profile")  # Extract user profile
                 user_agent = data.get("user_agent")  # Extract user agent
+                # client_ip was captured at connection time from headers
                 
                 print(f"Processing message: {user_message}")
                 print(f"User profile: {user_profile}")
                 print(f"User agent: {user_agent}")
+                print(f"Client IP: {client_ip}")
                 
                 # Send "processing" status
                 await manager.send_message({
@@ -253,11 +262,12 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                         )
                     assistant.set_websocket_sender(ws_send)
 
-                    # Process with assistant (pass user context)
+                    # Process with assistant (pass user context including real client IP)
                     result = assistant.process_request(
                         user_message,
                         user_agent=user_agent,
-                        user_profile=user_profile
+                        user_profile=user_profile,
+                        client_ip=client_ip        # real client IP, not server IP
                     )
                     
                     # Extract just the text response (avoid serialization issues)

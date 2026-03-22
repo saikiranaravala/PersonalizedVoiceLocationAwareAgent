@@ -6,6 +6,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { WebSocketClient, Message } from '../api/client';
 
+/** Auto-stop timeout for voice recognition (ms) */
+const VOICE_TIMEOUT_MS = 30_000; // 30 seconds
+
 export type VoiceStatus = 'idle' | 'listening' | 'processing' | 'speaking' | 'error';
 
 export interface ConversationMessage {
@@ -52,6 +55,19 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
     console.log('[Voice Assistant] User profile updated:', userProfile);
   }, [userProfile]);
 
+  // Fetch the client's public IP once on mount
+  useEffect(() => {
+    fetch('https://api.ipify.org?format=json')
+      .then(r => r.json())
+      .then(d => {
+        clientIpRef.current = d.ip;
+        console.log('[Voice Assistant] Client IP resolved:', d.ip);
+      })
+      .catch(() => {
+        console.warn('[Voice Assistant] Could not resolve client IP — server IP will be used for geolocation');
+      });
+  }, []);
+
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [conversation, setConversation] = useState<ConversationMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
@@ -62,6 +78,9 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
   const wsClient = useRef<WebSocketClient | null>(null);
   const recognitionRef = useRef<any>(null);
   const synthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  // Cache the client's real public IP once on mount so the backend can
+  // geolocate the USER rather than the cloud server (Columbus, OH → Erie, PA fix).
+  const clientIpRef = useRef<string | undefined>(undefined);
 
   /**
    * Initialize WebSocket connection
@@ -158,7 +177,7 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
           setError('Listening timeout. Please try again.');
           setTimeout(() => setError(null), 3000);
         }
-      }, 10000); // 10 second timeout
+      }, VOICE_TIMEOUT_MS); // 30 second timeout
       
       // Store timeout ID to clear it later
       (recognitionRef.current as any).timeoutId = timeoutId;
@@ -393,8 +412,8 @@ export function useVoiceAssistant(options: UseVoiceAssistantOptions = {}) {
       
       setStatus('processing');
       
-      // Send message with user profile and user agent (use ref for latest value)
-      wsClient.current.sendMessage(text, userProfileRef.current, navigator.userAgent);
+      // Send message with user profile, user agent, and real client IP
+      wsClient.current.sendMessage(text, userProfileRef.current, navigator.userAgent, clientIpRef.current);
       
       console.log('[WebSocket] Message sent successfully with user context');
     } catch (error) {

@@ -26,8 +26,14 @@ class LocationService:
         # Cache for geocoded addresses to avoid repeated API calls
         self._geocode_cache = {}
 
-    def get_current_location(self) -> Dict[str, any]:
+    def get_current_location(self, client_ip: Optional[str] = None) -> Dict[str, any]:
         """Get current GPS location.
+
+        Args:
+            client_ip: The real client IP forwarded from the WebSocket connection.
+                       When provided, geolocation runs against the CLIENT's IP
+                       instead of the server's IP. Critical for cloud-hosted
+                       deployments where server and user are in different cities.
 
         Returns:
             Dictionary with latitude, longitude, and address
@@ -37,8 +43,17 @@ class LocationService:
             return self._get_fallback_location()
 
         try:
-            # Try to get GPS location
-            g = geocoder.ip('me')
+            # Use the client's real IP if provided.
+            # 'me' always resolves to the SERVER's IP — wrong on cloud deployments.
+            ip_target = client_ip if client_ip else 'me'
+            if client_ip:
+                logger.info(f"Geolocating using client IP: {client_ip}")
+            else:
+                logger.warning(
+                    "No client_ip provided — geolocating server IP ('me'). "
+                    "Results will reflect server location, not user location."
+                )
+            g = geocoder.ip(ip_target)
             
             if g.ok and g.latlng:
                 lat, lng = g.latlng

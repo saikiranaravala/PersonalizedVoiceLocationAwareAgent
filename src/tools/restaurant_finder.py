@@ -106,9 +106,73 @@ class RestaurantFinder(BaseTool):
             if coords is not None:
                 return coords
 
-        # Case 5: final fallback — IP-based detection
+            # Case 3b: ContextManager returned a profile dict with an address
+            # string but no coordinates — geocode the address before falling
+            # through to IP-based detection (which resolves the SERVER's city).
+            profile_address = self._profile_address_from_service(self.location_service)
+            if profile_address:
+                try:
+                    coords = self._geocode_city(profile_address)
+                    from utils.logger import logger
+                    logger.info(f"Geocoded profile address '{profile_address}' to {coords}")
+                    return coords
+                except Exception as e:
+                    from utils.logger import logger
+                    logger.warning(f"Could not geocode profile address '{profile_address}': {e}")
+
+        # Case 5: final fallback — IP-based detection.
+        # NOTE: This uses the CLIENT ip if _client_ip is set on the location_service,
+        # otherwise it falls back to the server IP (wrong on cloud deployments).
+        client_ip = getattr(self.location_service, "_client_ip", None) if self.location_service else None
+        if client_ip:
+            try:
+                import urllib.request, json
+                req = urllib.request.Request(
+                    f"https://ipinfo.io/{client_ip}/json",
+                    headers={"User-Agent": "RestaurantFinder/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read().decode())
+                loc = data.get("loc", "")
+                if loc:
+                    lat, lon = map(float, loc.split(","))
+                    city = data.get("city", "Unknown")
+                    region = data.get("region", "")
+                    from utils.logger import logger
+                    logger.info(f"Client IP geolocation: {city}, {region} ({lat:.4f}, {lon:.4f})")
+                    return lat, lon
+            except Exception as e:
+                from utils.logger import logger
+                logger.warning(f"Client IP geolocation failed: {e}")
+
         lat, lon, _ = self._get_location_from_ip()
         return lat, lon
+
+    @staticmethod
+    def _profile_address_from_service(svc) -> str | None:
+        """Extract a usable address string from ContextManager profile data.
+
+        When the profile has city/state/address fields but no coordinates,
+        we build a geocodable string from whatever parts are available.
+        """
+        try:
+            if not callable(getattr(svc, "get_location", None)):
+                return None
+            result = svc.get_location()
+            if not isinstance(result, dict):
+                return None
+
+            # Build address from most-specific to least-specific
+            parts = [
+                result.get("address", ""),
+                result.get("city", ""),
+                result.get("state", ""),
+                result.get("country", ""),
+            ]
+            address_str = ", ".join(p.strip() for p in parts if p and p.strip())
+            return address_str if address_str else None
+        except Exception:
+            return None
 
     @staticmethod
     def _coords_from_service(svc) -> tuple | None:
@@ -163,7 +227,10 @@ class RestaurantFinder(BaseTool):
         # Always returns a dict; uses GPS → IP → config fallback internally
         if callable(getattr(svc, "get_current_location", None)):
             try:
-                result = svc.get_current_location()
+                # Pass client_ip if the service supports it (patched LocationService does).
+                # This ensures IP geolocation targets the CLIENT not the server.
+                client_ip = getattr(svc, "_client_ip", None)
+                result = svc.get_current_location(client_ip=client_ip) if client_ip else svc.get_current_location()
                 if result is not None:
                     coords = _extract(result)
                     if coords:
