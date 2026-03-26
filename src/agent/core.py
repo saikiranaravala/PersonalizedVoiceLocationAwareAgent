@@ -20,6 +20,7 @@ from tools.uber import UberTool
 from tools.weather import WeatherTool
 from tools.restaurant_finder import RestaurantFinder
 from tools.save_preferences_tool import SaveRestaurantTool, SaveUberTripTool
+from tools.events import EventsTool
 
 from utils.config import config
 from utils.logger import logger
@@ -196,6 +197,16 @@ class AgenticAssistant:
                 func=self.save_uber_trip_tool.execute,
                 name=self.save_uber_trip_tool.name,
                 description=self.save_uber_trip_tool.description,
+            )
+        )
+
+        # Local events discovery — Ticketmaster Discovery API
+        events_tool = EventsTool(self.location_adapter)
+        tools.append(
+            StructuredTool.from_function(
+                func=events_tool.execute,
+                name=events_tool.name,
+                description=events_tool.description,
             )
         )
 
