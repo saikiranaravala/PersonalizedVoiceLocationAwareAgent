@@ -258,13 +258,59 @@ function App() {
     return style;
   })();
 
-  const linkifyText = (text: string) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    return text.split(urlRegex).map((part, i) =>
-      urlRegex.test(part)
-        ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="message-link">[click here]</a>
-        : part
-    );
+  /**
+   * Render assistant message text with proper markdown link support.
+   *
+   * Handles two patterns in order:
+   *   1. [label](url)  — markdown links from the LLM (events, restaurants, etc.)
+   *   2. bare https?:// URLs — plain links without a label
+   *
+   * Splitting on a combined regex lets us interleave both in a single pass
+   * and preserves all surrounding plain text exactly as-is.
+   */
+  const linkifyText = (text: string): React.ReactNode[] => {
+    // Group 1 = full markdown link,  group 2 = label,  group 3 = url
+    // Group 4 = bare URL (no markdown wrapper)
+    const LINK_RE = /(\[([^\]]+)\]\((https?:\/\/[^)]+)\))|(https?:\/\/[^\s)]+)/g;
+
+    const nodes: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = LINK_RE.exec(text)) !== null) {
+      // Push any plain text before this match
+      if (match.index > lastIndex) {
+        nodes.push(text.slice(lastIndex, match.index));
+      }
+
+      if (match[1]) {
+        // Markdown link: [label](url)
+        const label = match[2];
+        const url   = match[3];
+        nodes.push(
+          <a key={match.index} href={url} target="_blank" rel="noopener noreferrer" className="message-link">
+            {label}
+          </a>
+        );
+      } else {
+        // Bare URL
+        const url = match[4];
+        nodes.push(
+          <a key={match.index} href={url} target="_blank" rel="noopener noreferrer" className="message-link">
+            {url}
+          </a>
+        );
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Push any remaining plain text after the last match
+    if (lastIndex < text.length) {
+      nodes.push(text.slice(lastIndex));
+    }
+
+    return nodes;
   };
 
   return (
@@ -431,8 +477,8 @@ function App() {
         {/* Body — hidden when minimized */}
         {chatWindowState !== 'minimized' && (
           <div className="chat-window__body">
-            {/* Quick actions */}
-            <div className="chat-window__quickactions">
+            {/* Quick actions — single row, all 4 chips */}
+            <div className="chat-window__quickactions chat-window__quickactions--compact">
               <button className="chat-window__qa-btn" onClick={() => handleQuickAction('weather')} disabled={!isConnected}>
                 <WeatherIcon /> <span>Weather</span>
               </button>
