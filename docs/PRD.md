@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # Personalized Agentic Voice Assistant
 
-**Version:** 1.0.0  
-**Date:** March 7, 2026  
-**Status:** Production Ready  
+**Version:** 2.0.0
+**Date:** March 2026
+**Status:** Production Ready
 **Owner:** Product Team
 
 ---
@@ -11,15 +11,15 @@
 ## Executive Summary
 
 ### Vision
-Create an intelligent, accessible, and personalized voice assistant that seamlessly integrates AI conversation with location-aware services, enabling users to accomplish everyday tasks through natural voice interaction.
+Create an intelligent, personalized voice assistant that resolves the user's real geographic location from their profile — never from the server — and executes everyday actions through natural voice or text interaction.
 
 ### Mission
-Deliver a production-ready voice assistant that combines cutting-edge AI with practical tools for weather, dining, and transportation, while maintaining user privacy and providing a delightful user experience.
+Deliver a production-ready voice assistant combining AI conversation with practical, location-accurate tools for weather, restaurant discovery, event discovery, and ride booking, while keeping all personal data in the user's browser.
 
 ### Target Users
-- **Primary**: Tech-savvy individuals seeking productivity tools
+- **Primary**: Individuals wanting a single interface for local services (weather, food, rides, events)
 - **Secondary**: Accessibility users requiring voice-first interfaces
-- **Tertiary**: Businesses needing customer service automation
+- **Tertiary**: Developers extending the platform with new tool integrations
 
 ---
 
@@ -38,6 +38,7 @@ Deliver a production-ready voice assistant that combines cutting-edge AI with pr
 11. [Success Metrics](#11-success-metrics)
 12. [Release Plan](#12-release-plan)
 13. [Future Roadmap](#13-future-roadmap)
+14. [Appendices](#14-appendices)
 
 ---
 
@@ -47,144 +48,142 @@ Deliver a production-ready voice assistant that combines cutting-edge AI with pr
 
 **Current Pain Points:**
 - Existing voice assistants lack deep integration with local services
+- Cloud-hosted backends geolocate the server, not the user — returning wrong city results
 - Limited personalization and context awareness
 - Privacy concerns with cloud-based data storage
-- Poor accessibility for users with disabilities
 - Difficult to extend with custom capabilities
 
 **Our Solution:**
-A modular, privacy-first voice assistant that:
-- Combines AI conversation with practical tools
-- Learns user preferences while respecting privacy
-- Provides accessible interface (WCAG AAA)
-- Enables easy extension with new capabilities
-- Works seamlessly across desktop and mobile
+A modular, privacy-first agentic voice assistant that:
+- Resolves the user's real location from their saved profile address, with client IP as fallback
+- Combines AI conversation with practical location-aware tools
+- Stores all personal data in the user's browser (`localStorage`) — nothing on the server
+- Enables easy extension with new LangChain tools
+- Works seamlessly across desktop and mobile browsers
 
-### 1.2 Value Proposition
+### 1.2 Core Technical Problem Solved (v2.0)
+
+The original v1.0 deployed backend on Render (Columbus, Ohio). All location-aware queries — restaurants, weather, events, Uber — returned results for Columbus rather than the user's actual city (Erie, PA).
+
+**Root cause:** `geocoder.ip('me')` on the server always resolves to the server's IP.
+
+**v2.0 solution — four-layer location pipeline:**
+```
+1. Profile has lat/lon coords     → use directly
+2. Profile has address/city/state → Nominatim geocode → use
+3. Client IP sent from browser    → ipinfo.io geolocate → use
+4. Server IP                      → NEVER used
+```
+
+This required coordinated changes across 6 files: `useVoiceAssistant.ts`, `client.ts`, `api_server.py`, `agent/core.py`, `services/location.py`, and `tools/restaurant_finder.py`.
+
+### 1.3 Value Proposition
 
 **For End Users:**
-- 🎯 **Personalized**: Learns your preferences and common destinations
-- 🗣️ **Natural**: Conversational AI powered by OpenRouter/OpenAI
-- 📍 **Location-Aware**: GPS-based services adapt to your location
-- 🎨 **Accessible**: WCAG AAA compliant with 5 professional themes
-- 🔒 **Private**: Data stored locally, you control what's shared
+- 🎯 **Location-Accurate**: Results always for YOUR city, not the server's city
+- 🗣️ **Natural**: Conversational AI via OpenRouter/OpenAI
+- 📍 **Profile-First**: Saves your address once; used automatically for all tools
+- 🎟️ **Events Discovery**: Upcoming local events via Ticketmaster
+- 🔒 **Private**: Profile data in your browser only
 
 **For Developers:**
-- 🔧 **Modular**: Easy to add new tools and capabilities
-- 📚 **Well-Documented**: Comprehensive guides and examples
-- 🧪 **Testable**: Clean architecture with test coverage
-- 🚀 **Production-Ready**: FastAPI + React stack
-- 📊 **Observable**: LangSmith integration for monitoring
+- 🔧 **Modular**: Add new tools with minimal boilerplate
+- 📚 **Well-Documented**: CLAUDE.md, README, ARCHITECTURE, PRD, SIMPLE_GUIDE
+- 🚀 **Production-Ready**: FastAPI + React + WebSocket stack
+- 📊 **Observable**: LangSmith integration for full agent trace visibility
 
-**For Businesses:**
-- 💼 **White-Label**: Customizable branding
-- 🔌 **Extensible**: Custom tool integration
-- 📈 **Scalable**: Async architecture handles load
-- 🛡️ **Secure**: API key management and CORS protection
-- 💰 **Cost-Effective**: Open-source base, pay for APIs used
-
-### 1.3 Competitive Analysis
+### 1.4 Competitive Analysis
 
 | Feature | Our Product | Alexa | Google Assistant | Siri |
 |---------|-------------|-------|-----------------|------|
 | Open Source | ✅ | ❌ | ❌ | ❌ |
 | Local Data Storage | ✅ | ❌ | ❌ | ❌ |
 | Custom Tools | ✅ Easy | ⚠️ Complex | ⚠️ Complex | ❌ |
-| AI Model Choice | ✅ Any | ❌ Fixed | ❌ Fixed | ❌ Fixed |
-| User Profiles | ✅ Rich | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic |
-| Uber Integration | ✅ Smart | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic |
-| Accessibility | ✅ WCAG AAA | ⚠️ AA | ⚠️ AA | ⚠️ AA |
-| Multi-Theme | ✅ 5 themes | ❌ | ❌ | ❌ |
+| AI Model Choice | ✅ Any via OpenRouter | ❌ Fixed | ❌ Fixed | ❌ Fixed |
+| Profile-First Location | ✅ | ❌ | ❌ | ❌ |
+| Local Events Tool | ✅ Ticketmaster | ⚠️ Basic | ⚠️ Basic | ❌ |
+| Uber Integration | ✅ Smart pickup | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic |
 | Web-Based | ✅ | ❌ | ❌ | ❌ |
 | Privacy-First | ✅ | ❌ | ❌ | ❌ |
+| Free Data APIs | ✅ OSM/Open-Meteo | ❌ | ❌ | ❌ |
 
 ---
 
 ## 2. User Personas
 
-### Persona 1: "Tech-Savvy Taylor"
+### Persona 1: "SAI KIRAN" (Reference User / Primary Persona)
 
 **Demographics:**
-- Age: 28
-- Occupation: Software Engineer
-- Location: Urban area
+- Age: 39, Male
+- Location: Erie, Pennsylvania
+- Device: Windows desktop (Chrome) + mobile
 - Tech proficiency: Advanced
 
 **Goals:**
-- Automate daily tasks (weather check, ride booking)
-- Quick access to local information
-- Customize and extend with own tools
-- Privacy-conscious data handling
+- Get restaurant recommendations for Erie, PA — not Columbus, OH
+- Check local weather, discover upcoming events
+- Book Uber from home address without re-entering it
 
-**Pain Points:**
-- Tired of clicking through apps
-- Wants voice-first workflow
-- Needs integration with daily services
-- Concerned about data privacy
+**Pain Points (pre-v2.0):**
+- Backend server in Columbus returned Columbus results
+- Had to re-specify city on every query
 
-**How Our Product Helps:**
-- Voice-first interface saves time
-- Direct integrations (Uber, weather, restaurants)
-- Open-source, can add custom tools
-- Local data storage, transparent privacy
+**How v2.0 Helps:**
+- Profile address (`5013 Burgundy Dr, Erie, PENNSYLVANIA`) geocoded on every request
+- All tools — restaurants, weather, events, Uber — use Erie, PA automatically
+- Events chip shows Ticketmaster events in Erie/PA area
 
 ---
 
-### Persona 2: "Accessibility-Focused Alex"
+### Persona 2: "Tech-Savvy Taylor"
 
 **Demographics:**
-- Age: 45
-- Occupation: Accountant
-- Location: Suburban area
-- Tech proficiency: Moderate
-- Visual impairment
+- Age: 28, Software Engineer, Urban area
+- Tech proficiency: Advanced
 
 **Goals:**
-- Independent task completion
-- Screen-reader compatible interface
-- Large text and high contrast options
-- Voice-controlled navigation
-
-**Pain Points:**
-- Many apps lack accessibility
-- Small text, poor contrast
-- Difficult keyboard navigation
-- Voice assistants ignore accessibility
+- Automate daily tasks (weather, ride booking, finding events)
+- Quick access to local information
+- Extend platform with custom tools
 
 **How Our Product Helps:**
-- WCAG AAA compliant design
-- High contrast theme option
-- Full keyboard navigation
-- Screen reader optimized
-- Voice-first interaction
+- Voice-first interface + text input fallback
+- Direct integrations (Uber, weather, restaurants, events)
+- Open architecture — add tools by creating one file and one registration line
 
 ---
 
 ### Persona 3: "Busy Professional Blake"
 
 **Demographics:**
-- Age: 35
-- Occupation: Marketing Manager
-- Location: Urban area
-- Tech proficiency: Moderate
+- Age: 35, Marketing Manager, Urban area
 
 **Goals:**
-- Manage schedule efficiently
-- Quick decision making (weather, dining)
+- Single interface for weather, dining, rides, events
 - Minimal app switching
-- Smart automation
-
-**Pain Points:**
-- Too many apps to check
-- Wastes time on simple tasks
-- Forgets to check weather
-- Restaurant decision paralysis
+- Quick-action chips for most common queries
 
 **How Our Product Helps:**
-- Single interface for multiple services
-- Voice queries faster than typing
-- Personalized recommendations
-- Learns preferences over time
+- 4 quick-action chips in a single compact row: Weather · Restaurants · Ride · Events
+- One click triggers the right tool with no typing
+- Profile stored so no repeated setup
+
+---
+
+### Persona 4: "Accessibility-Focused Alex"
+
+**Demographics:**
+- Age: 45, Accountant, Suburban area
+- Moderate tech proficiency, visual impairment
+
+**Goals:**
+- Independent task completion via voice
+- Screen-reader compatible interface
+
+**How Our Product Helps:**
+- Voice-first interaction with 30-second timeout (no rush)
+- Text input alternative for non-voice usage
+- Keyboard navigation throughout
 
 ---
 
@@ -193,324 +192,282 @@ A modular, privacy-first voice assistant that:
 ### Epic 1: Voice Interaction
 
 #### Story 1.1: Push-to-Talk
-**As a** user  
-**I want to** hold a key to speak  
-**So that** I can control when the assistant listens
+**As a** user
+**I want to** hold the mic button to speak
+**So that** I control exactly when the assistant listens
 
 **Acceptance Criteria:**
-- [ ] Space bar activates microphone
-- [ ] Visual indicator shows listening state
-- [ ] Releasing key stops listening
-- [ ] Works on all supported browsers
+- [x] Hold mic button → microphone activates
+- [x] Visual pulse rings indicate listening state
+- [x] Release button → speech sent automatically
+- [x] Works on Chrome and Edge
 
 ---
 
-#### Story 1.2: Continuous Listening
-**As a** user  
-**I want to** click once to start listening  
-**So that** I can speak without holding a key
+#### Story 1.2: Manual Stop
+**As a** user
+**I want to** click once and speak freely
+**So that** I can compose longer queries
 
 **Acceptance Criteria:**
-- [ ] Button toggles listening on/off
-- [ ] Auto-detects when user stops speaking
-- [ ] Configurable timeout (default 3s)
-- [ ] Clear visual feedback
+- [x] Single click starts listening
+- [x] "Stop & Send" button appears
+- [x] Click Stop & Send → sends transcript
+- [x] 30-second auto-timeout as safety net
 
 ---
 
-### Epic 2: User Profiles
+#### Story 1.3: Auto-Timeout
+**As a** user
+**I want** automatic cutoff after silence
+**So that** I'm never stuck in listening state
+
+**Acceptance Criteria:**
+- [x] `VOICE_TIMEOUT_MS = 30_000` (30 seconds)
+- [x] Timeout clears and sets status to idle
+- [x] Error message shown briefly, then clears
+
+---
+
+#### Story 1.4: Text Input
+**As a** user who prefers typing
+**I want** a text input alongside voice
+**So that** I can use the assistant in noisy environments or non-Chrome browsers
+
+**Acceptance Criteria:**
+- [x] Text input field visible at all times
+- [x] Enter key submits message
+- [x] Disabled during processing
+- [x] Works in all modern browsers
+
+---
+
+### Epic 2: User Profiles & Location
 
 #### Story 2.1: Profile Setup
-**As a** new user  
-**I want to** set up my profile  
-**So that** I get personalized service
+**As a** new user
+**I want to** set up my profile on first launch
+**So that** all tools know my city and name
 
 **Acceptance Criteria:**
-- [ ] 3-step wizard on first launch
-- [ ] Optional fields clearly marked
-- [ ] Can skip and set up later
-- [ ] Data saved to localStorage
-- [ ] Profile review before completion
+- [x] 3-step wizard on first visit (name → demographics → address)
+- [x] All fields optional with skip option
+- [x] Data saved to `localStorage`
+- [x] Accessible via "Edit Profile" at any time
 
 ---
 
-#### Story 2.2: Smart Uber Pickups
-**As a** desktop user  
-**I want to** use my home address for Uber pickups  
-**So that** I don't have to specify it each time
+#### Story 2.2: Profile-First Location
+**As a** user in Erie, PA
+**I want** the assistant to use MY city for all searches
+**So that** I never get results for the server's location (Columbus, OH)
 
 **Acceptance Criteria:**
-- [ ] Profile includes street address field
-- [ ] Desktop: uses home address as default pickup
-- [ ] Mobile: uses GPS location (ignores profile)
-- [ ] Falls back to city if address not set
-- [ ] User can override with explicit pickup
+- [x] Profile address geocoded on every request via Nominatim
+- [x] Client IP sent from browser as fallback
+- [x] Server IP (`geocoder.ip('me')`) never used as final source
+- [x] Backend logs confirm Erie, PA coordinates used
 
 ---
 
-### Epic 3: Location Services
+#### Story 2.3: Smart Uber Pickup
+**As a** desktop user
+**I want** Uber to pre-fill my home address as pickup
+**So that** I don't have to re-enter it every time
 
-#### Story 3.1: Weather Check
-**As a** user  
-**I want to** ask about weather  
+**Acceptance Criteria:**
+- [x] Profile includes street address field
+- [x] Desktop: profile address used as Uber pickup
+- [x] Mobile: current GPS location used instead
+- [x] Falls back to city if address not saved
+
+---
+
+### Epic 3: Location-Aware Tools
+
+#### Story 3.1: Weather
+**As a** user
+**I want to** ask about local weather
 **So that** I can plan my day
 
 **Acceptance Criteria:**
-- [ ] Responds to "What's the weather?"
-- [ ] Uses user's current location
-- [ ] Shows current conditions + forecast
-- [ ] Includes temperature, conditions, precipitation
-- [ ] Updates when location changes
+- [x] "What's the weather?" → Open-Meteo API for user's city
+- [x] No API key required
+- [x] Shows temperature, conditions, forecast
+- [x] Weather chip triggers instantly
 
 ---
 
 #### Story 3.2: Restaurant Search
-**As a** user  
-**I want to** find nearby restaurants  
+**As a** user
+**I want to** find restaurants near me
 **So that** I can decide where to eat
 
 **Acceptance Criteria:**
-- [ ] Searches by cuisine type
-- [ ] Shows ratings and distance
-- [ ] Supports location specification
-- [ ] Returns top 5 results
-- [ ] Includes address and links
+- [x] Results for user's actual city (Erie, PA)
+- [x] Free Overpass API (OpenStreetMap) — no paid key
+- [x] Sorted by distance, nearest first
+- [x] Returns name, address, phone, hours, cuisine
+- [x] Nominatim 429 handled with retry/backoff
 
 ---
 
 #### Story 3.3: Uber Booking
-**As a** user  
-**I want to** book an Uber  
-**So that** I can get a ride quickly
+**As a** user
+**I want to** book a ride with one click
+**So that** I can get transportation quickly
 
 **Acceptance Criteria:**
-- [ ] Generates working Uber deep link
-- [ ] Pre-fills pickup based on device type
-- [ ] Pre-fills destination from query
-- [ ] Shows estimated pickup location
-- [ ] Opens Uber app/web with one click
+- [x] Generates Ticketmaster deep link `https://m.uber.com/ul/?...`
+- [x] Pickup pre-filled from profile address
+- [x] Destination geocoded from query text
+- [x] Link opens Uber with everything pre-filled
 
 ---
 
-### Epic 4: Personalization
-
-#### Story 4.1: Activity Tracking
-**As a** user  
-**I want** my activity tracked  
-**So that** I get better recommendations
+#### Story 3.4: Local Events Discovery
+**As a** user
+**I want to** discover upcoming events in my city
+**So that** I know what's happening near me this month
 
 **Acceptance Criteria:**
-- [ ] Tracks restaurant visits
-- [ ] Tracks Uber destinations
-- [ ] Learns favorite cuisines
-- [ ] Suggests frequent destinations
-- [ ] Never shares without permission
+- [x] Ticketmaster Discovery API v2
+- [x] 30-day window computed dynamically (never hardcoded)
+- [x] Returns top 10 events (minimum enforced — LLM cannot return fewer)
+- [x] Fields: name, date, venue, address, category, price, direct URL
+- [x] No image fields (prevents `![Image](url)` rendering in chat)
+- [x] Events quick-action chip in UI
+- [x] Keyword filtering: "concerts", "sports", "theatre", etc.
+- [x] State name normalised: `PENNSYLVANIA` → `PA`
 
 ---
 
-#### Story 4.2: Personalized Greetings
-**As a** user  
-**I want** personalized greetings  
-**So that** the experience feels tailored to me
+### Epic 4: Chat UI & Link Rendering
+
+#### Story 4.1: Markdown Link Rendering
+**As a** user
+**I want** event and restaurant links to render as clickable text
+**So that** I don't see raw `[text](url)` syntax or broken URLs with trailing `)`
 
 **Acceptance Criteria:**
-- [ ] Uses name and title
-- [ ] Time-aware (morning/afternoon/evening)
-- [ ] Mentions location
-- [ ] Rotates greeting styles
-- [ ] Can be disabled in settings
+- [x] `[Event Name](https://...)` → renders as `<a>Event Name</a>`
+- [x] No trailing `)` in rendered links
+- [x] Bare URLs also rendered as clickable links
+- [x] Plain text preserved exactly as-is
 
 ---
 
-### Epic 5: Accessibility
-
-#### Story 5.1: Theme Selection
-**As a** user with visual needs  
-**I want to** choose a high-contrast theme  
-**So that** I can read the interface easily
+#### Story 4.2: Quick-Action Chips
+**As a** user
+**I want** one-click shortcuts for common queries
+**So that** I don't have to type the same phrases repeatedly
 
 **Acceptance Criteria:**
-- [ ] 5 theme options
-- [ ] High Contrast theme (WCAG AAA)
-- [ ] Theme persists across sessions
-- [ ] No flash when changing themes
-- [ ] Works with system preferences
+- [x] 4 chips: Weather · Restaurants · Ride · Events
+- [x] All 4 visible in a single row (no wrapping)
+- [x] Compact layout at default 380px window width
+- [x] Disabled when WebSocket disconnected
+- [x] Each triggers correct tool via `sendTextMessage`
 
 ---
 
-#### Story 5.2: Keyboard Navigation
-**As a** keyboard user  
-**I want to** navigate without a mouse  
-**So that** I can use the app efficiently
+### Epic 5: Reliability & Error Handling
+
+#### Story 5.1: Nominatim Rate Limit Recovery
+**As a** user
+**I want** location lookups to succeed even when geocoding is rate-limited
+**So that** I never see a raw "429" error
 
 **Acceptance Criteria:**
-- [ ] Tab navigation works throughout
-- [ ] Space bar for push-to-talk
-- [ ] Enter to send text messages
-- [ ] Escape to close modals
-- [ ] Visual focus indicators
+- [x] `_geocode_city()` sleeps 1.1s before each attempt
+- [x] Catches HTTP 429 and retries up to 3× with 2s/4s backoff
+- [x] Profile geocode staggered 1.1s before restaurant search geocode
+- [x] User sees normal results, not error messages
+
+---
+
+#### Story 5.2: WebSocket Reconnection
+**As a** user
+**I want** the app to reconnect automatically if connection drops
+**So that** I don't have to refresh the page
+
+**Acceptance Criteria:**
+- [x] Up to 5 reconnect attempts with exponential backoff
+- [x] Connection banner shown while reconnecting
+- [x] Manual "Retry" button available
+- [x] Session resumes after reconnect
 
 ---
 
 ## 4. Functional Requirements
 
-### 4.1 Core Features
+### 4.1 Location Resolution (P0 — Critical)
 
-#### FR-1: Voice Recognition
-- **FR-1.1**: System MUST support Web Speech API
-- **FR-1.2**: System MUST detect speech start/end automatically
-- **FR-1.3**: System MUST provide visual feedback during listening
-- **FR-1.4**: System MUST support push-to-talk mode (Space bar)
-- **FR-1.5**: System MUST support continuous listening mode
-- **FR-1.6**: System MUST gracefully degrade if voice unsupported
+| Requirement | Implementation |
+|-------------|---------------|
+| Profile address geocoding | Nominatim geocodes `city + state` on every request |
+| Client IP fallback | `api.ipify.org` resolves client IP on mount; sent in every WS message |
+| Server IP prohibition | `geocoder.ip('me')` must never be the final location source |
+| Nominatim rate limiting | 1.1s pre-sleep + 3× retry with 2s/4s backoff on HTTP 429 |
+| Location priority order | profile lat/lon → geocode address → client IP → config fallback |
 
-#### FR-2: AI Conversation
-- **FR-2.1**: System MUST integrate with OpenRouter or OpenAI
-- **FR-2.2**: System MUST maintain conversation context
-- **FR-2.3**: System MUST support multi-turn dialogues
-- **FR-2.4**: System MUST use LangChain for agent orchestration
-- **FR-2.5**: System MUST log conversations to LangSmith (if enabled)
-- **FR-2.6**: System MUST handle API failures gracefully
+### 4.2 Voice Interface (P0)
 
-#### FR-3: Location Services
-- **FR-3.1**: System MUST detect user's GPS location
-- **FR-3.2**: System MUST geocode addresses to coordinates
-- **FR-3.3**: System MUST reverse geocode coordinates to addresses
-- **FR-3.4**: System MUST cache geocoding results
-- **FR-3.5**: System MUST fall back to default location if GPS fails
-- **FR-3.6**: System MUST update location context automatically
+| Requirement | Implementation |
+|-------------|---------------|
+| Push-to-talk | Hold mic button → record → release → send |
+| Manual stop | Click mic → "Stop & Send" button → click to send |
+| Auto-timeout | `VOICE_TIMEOUT_MS = 30_000` (30 seconds) |
+| Speech synthesis | All responses spoken via `SpeechSynthesisUtterance` |
+| Browser support | Chrome/Edge (Web Speech API); text input fallback on others |
 
-#### FR-4: Weather Tool
-- **FR-4.1**: System MUST fetch current weather conditions
-- **FR-4.2**: System MUST provide temperature, conditions, humidity
-- **FR-4.3**: System MUST support location specification
-- **FR-4.4**: System MUST use Open-Meteo API (no key required)
-- **FR-4.5**: System MUST handle API rate limits
-- **FR-4.6**: System MUST cache weather data (5-minute TTL)
+### 4.3 Tool Integrations (P0)
 
-#### FR-5: Restaurant Tool
-- **FR-5.1**: System MUST search restaurants by cuisine
-- **FR-5.2**: System MUST filter by location
-- **FR-5.3**: System MUST return ratings and reviews
-- **FR-5.4**: System MUST integrate with Zomato API
-- **FR-5.5**: System MUST handle missing API key gracefully
-- **FR-5.6**: System MUST sort results by relevance/rating
+| Tool | API | Auth | Result |
+|------|-----|------|--------|
+| Restaurant Search | Overpass API (OSM) | None | Nearby restaurants sorted by distance |
+| Weather | Open-Meteo | None | Current conditions for user's city |
+| Uber | Deep link | None | Pre-filled Uber URL |
+| Local Events | Ticketmaster Discovery v2 | `TICKETMASTER_API_KEY` | Top 10 upcoming events, 30-day window |
+| Geocoding | Nominatim (OSM) | None | Address → lat/lon |
 
-#### FR-6: Uber Tool
-- **FR-6.1**: System MUST generate Uber deep links
-- **FR-6.2**: System MUST detect device type (desktop/mobile)
-- **FR-6.3**: System MUST use profile address for desktop pickup
-- **FR-6.4**: System MUST use GPS location for mobile pickup
-- **FR-6.5**: System MUST build complete address (street+city+state+country)
-- **FR-6.6**: System MUST pre-fill pickup and dropoff in Uber
-- **FR-6.7**: System MUST geocode pickup address to coordinates
-- **FR-6.8**: System MUST handle geocoding failures gracefully
+### 4.4 Chat Message Rendering (P0)
 
-#### FR-7: User Profiles
-- **FR-7.1**: System MUST collect basic information (name, age, gender)
-- **FR-7.2**: System MUST collect location (address, city, state, country)
-- **FR-7.3**: System MUST store profile in localStorage
-- **FR-7.4**: System MUST support profile editing
-- **FR-7.5**: System MUST support profile reset
-- **FR-7.6**: System MUST auto-assign titles based on gender/age
-- **FR-7.7**: System MUST generate personalized greetings
-- **FR-7.8**: System MUST track activity (restaurants, Uber trips)
+| Requirement | Implementation |
+|-------------|---------------|
+| Markdown links | Two-group regex: `[label](url)` → `<a>{label}</a>` |
+| Bare URLs | Regex group 4: `https://...` → `<a>{url}</a>` |
+| No broken `)` in URLs | Consuming entire markdown token; `)` never enters DOM |
+| Plain text preserved | Left-to-right pass; non-link text untouched |
 
-#### FR-8: User Interface
-- **FR-8.1**: System MUST provide 5 theme options
-- **FR-8.2**: System MUST support dark and light modes
-- **FR-8.3**: System MUST persist theme selection
-- **FR-8.4**: System MUST show connection status
-- **FR-8.5**: System MUST show processing status
-- **FR-8.6**: System MUST display conversation history
-- **FR-8.7**: System MUST support text input fallback
-- **FR-8.8**: System MUST show voice visualization
+### 4.5 Events Tool Specifics (P1)
 
----
+| Requirement | Implementation |
+|-------------|---------------|
+| Minimum 10 results | `display_limit = max(10, int(limit))` — floor enforced |
+| No image fields | `image_url` removed from `_parse_events()` return dict |
+| Dynamic date window | `now → now + timedelta(days=30)` — never hardcoded |
+| Keyword → segment | "concert" → Music ID, "sports" → Sports ID, etc. |
+| State normalisation | `PENNSYLVANIA` → `PA` via `_state_to_code()` |
 
-### 4.2 User Profile Requirements
+### 4.6 WebSocket Payload (P0)
 
-#### Profile Data Structure
-```typescript
+```json
 {
-  // Basic Info (Required)
-  id: string,
-  firstName: string,
-  createdAt: Date,
-  lastUpdatedAt: Date,
-  
-  // Personal (Optional)
-  lastName?: string,
-  gender: 'male' | 'female' | 'other' | 'prefer-not-to-say',
-  age?: number,
-  title?: 'Mr.' | 'Mrs.' | 'Ms.' | 'Miss' | 'Dr.' | 'Master' | '',
-  
-  // Location (Optional)
-  address?: string,  // Street address
-  city: string,      // Required for services
-  state: string,
-  country: string,
-  
-  // Preferences (Auto-generated)
-  preferences: {
-    favoriteRestaurants: Array<RestaurantVisit>,
-    frequentDestinations: Array<UberTrip>,
-    preferredCuisines: Array<string>
-  }
+  "type": "chat",
+  "message": "string",
+  "user_profile": { "city": "Erie", "state": "PENNSYLVANIA", "address": "...", ... },
+  "user_agent": "string",
+  "client_ip": "24.210.110.237",
+  "timestamp": 1711234567890
 }
 ```
 
-#### Profile Setup Flow
-```
-First Launch
-    ↓
-Show Profile Setup Wizard
-    ↓
-Step 1: Name
-    ↓
-Step 2: Gender, Age, Title
-    ↓
-Step 3: Address, City, State, Country
-    ↓
-Save to localStorage
-    ↓
-Show Main App
-```
+### 4.7 User Profile (P0)
 
----
+Stored in browser `localStorage`. Fields: `id`, `firstName`, `gender`, `age`, `title`, `address`, `city`, `state`, `country`, `createdAt`, `lastUpdatedAt`.
 
-### 4.3 Smart Pickup Logic
-
-#### Desktop Flow
-```
-User requests Uber
-    ↓
-Detect: User-Agent indicates desktop
-    ↓
-Check: user_profile.address exists?
-    ├─ YES → Build complete address
-    │         (street + city + state + country)
-    │         ↓
-    │         Geocode address
-    │         ↓
-    │         Use coordinates as pickup
-    │
-    └─ NO → Use system location (city-level)
-               ↓
-               Use city coordinates as pickup
-```
-
-#### Mobile Flow
-```
-User requests Uber
-    ↓
-Detect: User-Agent indicates mobile
-    ↓
-Get current GPS location
-    ↓
-Use GPS coordinates as pickup
-(Ignore profile address)
-```
+Sent with every WebSocket message. Backend geocodes `city + state` on each request and injects coordinates into `ContextManager` for the session.
 
 ---
 
@@ -518,553 +475,228 @@ Use GPS coordinates as pickup
 
 ### 5.1 Performance
 
-**NFR-1: Response Time**
-- Voice recognition latency: <500ms
-- AI response generation: <3s (95th percentile)
-- Weather API response: <1s
-- Restaurant search: <2s
-- Uber link generation: <500ms
-- UI interactions: <100ms
+| Metric | Target |
+|--------|--------|
+| Agent response P90 | < 5 seconds |
+| Nominatim geocode | < 2 seconds (with retry handling) |
+| Overpass restaurant query | < 5 seconds (30s timeout) |
+| Ticketmaster events query | < 3 seconds |
+| WebSocket connection | < 1 second |
 
-**NFR-2: Throughput**
-- Concurrent users: 100+ per server instance
-- WebSocket connections: 1000+ simultaneous
-- Messages per second: 50+ per server
+### 5.2 Reliability
 
-**NFR-3: Resource Usage**
-- Backend memory: <512MB baseline
-- Frontend bundle size: <500KB gzipped
-- API calls cached: 90% cache hit rate
-- Database queries: None (localStorage only)
+| Metric | Target |
+|--------|--------|
+| WebSocket auto-reconnect | 5 attempts, exponential backoff |
+| Nominatim 429 recovery | 3 retries, 2s/4s backoff |
+| Location accuracy | Correct city 100% when profile has address |
+| Tool failure handling | Graceful error message, no crash |
 
----
+### 5.3 Compatibility
 
-### 5.2 Scalability
-
-**NFR-4: Horizontal Scaling**
-- Backend: Stateless, can scale to N instances
-- Load balancer: Round-robin distribution
-- WebSocket: Sticky sessions supported
-- Session management: In-memory (future: Redis)
-
-**NFR-5: Data Growth**
-- Profile data: <1MB per user
-- Conversation history: Ephemeral (not persisted)
-- Cache size: Auto-pruning at 1000 entries
-
----
-
-### 5.3 Reliability
-
-**NFR-6: Availability**
-- Uptime target: 99.5% (SLA)
-- Planned downtime: <4 hours/month
-- Unplanned downtime: <1 hour/month
-
-**NFR-7: Error Handling**
-- API failures: Graceful degradation
-- Network errors: Retry with exponential backoff
-- Invalid inputs: Clear error messages
-- Crash recovery: Auto-reconnect WebSocket
-
-**NFR-8: Data Integrity**
-- Profile data: localStorage with validation
-- Conversation context: Maintained per session
-- No data loss on browser refresh
-
----
+| Platform | Voice | Text |
+|----------|-------|------|
+| Chrome 80+ (desktop) | ✅ | ✅ |
+| Edge 80+ (desktop) | ✅ | ✅ |
+| Firefox | ❌ | ✅ |
+| iOS Safari | ❌ | ✅ |
+| Android Chrome | ✅ | ✅ |
+| Min screen width | — | 320px |
 
 ### 5.4 Security
 
-**NFR-9: Authentication**
-- API keys: Environment variables only
-- User data: No server-side authentication (v1.0)
-- WebSocket: Session ID validation
-- CORS: Whitelist configuration
-
-**NFR-10: Data Protection**
-- API keys: Never exposed to client
-- User profile: Stored locally, user-controlled
-- Conversation: Not persisted by default
-- HTTPS: Required in production
-
-**NFR-11: Input Validation**
-- All user inputs sanitized
-- API responses validated
-- Type checking (TypeScript)
-- SQL injection: N/A (no database)
-
----
-
-### 5.5 Accessibility
-
-**NFR-12: WCAG Compliance**
-- Level: AAA target, AA minimum
-- Color contrast: 7:1 minimum (AAA)
-- Keyboard navigation: Full support
-- Screen readers: ARIA labels throughout
-- Focus indicators: Visible and clear
-
-**NFR-13: Browser Support**
-- Chrome: Latest 2 versions
-- Edge: Latest 2 versions
-- Firefox: Latest 2 versions
-- Safari: Latest 2 versions
-- Mobile: iOS Safari 14+, Chrome Android 90+
-
-**NFR-14: Device Support**
-- Desktop: 1024px+ width
-- Tablet: 768px-1023px width
-- Mobile: 320px-767px width
-- Touch: Full gesture support
-- Voice: Required for voice features
-
----
-
-### 5.6 Usability
-
-**NFR-15: User Experience**
-- Learning curve: <5 minutes to first success
-- Task completion: <30 seconds for common tasks
-- Error recovery: Clear guidance provided
-- Feedback: Always visible and timely
-
-**NFR-16: Documentation**
-- User guide: Comprehensive and illustrated
-- Developer docs: API references and examples
-- Inline help: Tooltips and hints
-- Error messages: Actionable and clear
-
----
-
-### 5.7 Maintainability
-
-**NFR-17: Code Quality**
-- Test coverage: >80%
-- Code style: Enforced (Black, ESLint)
-- Type safety: 100% TypeScript frontend
-- Documentation: Docstrings and JSDoc
-
-**NFR-18: Monitoring**
-- Logging: Structured logs (JSON)
-- Metrics: Response times, error rates
-- Tracing: LangSmith integration
-- Alerts: Critical errors notify team
+- API keys in `config/.env` only — never in frontend bundle
+- User profile in `localStorage` — never sent to third parties
+- HTTPS required in production (mic access requires secure context)
+- CORS restricted to known origins in production
+- `TICKETMASTER_API_KEY` backend-only
 
 ---
 
 ## 6. Technical Specifications
 
-### 6.1 Backend Architecture
+### 6.1 Backend Stack
 
-**Tech Stack:**
-- **Language**: Python 3.9+
-- **Framework**: FastAPI 0.104+
-- **AI Framework**: LangChain 0.1+
-- **AI Provider**: OpenRouter or OpenAI
-- **WebSocket**: FastAPI native WebSockets
-- **Geocoding**: Geopy with Nominatim
-- **HTTP Client**: httpx (async)
+| Component | Technology |
+|-----------|-----------|
+| Runtime | Python 3.8+ |
+| Framework | FastAPI + uvicorn |
+| Agent | LangChain `create_tool_calling_agent` + `AgentExecutor` |
+| LLM | OpenRouter (configurable) / OpenAI |
+| Location | Nominatim (geocode) + ipinfo.io (IP geolocation) + geopy |
+| Logging | Loguru |
+| Tracing | LangSmith (optional) |
 
-**Key Libraries:**
-```python
-fastapi>=0.104.0
-langchain>=0.1.0
-geopy>=2.4.0
-httpx>=0.25.0
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-```
+### 6.2 Frontend Stack
 
-**Project Structure:**
-```
-src/
-├── agent/
-│   ├── core.py          # Main agent class
-│   └── prompts.py       # System prompts
-├── services/
-│   ├── context.py       # Context management
-│   └── location.py      # Location services
-├── tools/
-│   ├── base.py          # Base tool class
-│   ├── weather.py       # Weather tool
-│   ├── zomato.py        # Restaurant tool
-│   └── uber.py          # Uber tool
-└── utils/
-    └── device_detection.py
-```
+| Component | Technology |
+|-----------|-----------|
+| Framework | React 18 + TypeScript |
+| Build | Vite |
+| Voice | Web Speech API (recognition + synthesis) |
+| State | `useState`/`useRef` + `localStorage` |
+| IP Resolution | `api.ipify.org` on mount |
+| Icons | Inline SVG (per component) |
 
----
+### 6.3 External APIs
 
-### 6.2 Frontend Architecture
+| API | Purpose | Auth | Cost |
+|-----|---------|------|------|
+| OpenRouter / OpenAI | LLM reasoning | API key | Pay per token |
+| Ticketmaster Discovery v2 | Local events | API key | Free tier available |
+| Overpass API (OSM) | Restaurant search | None | Free |
+| Nominatim (OSM) | Geocoding | None (User-Agent req.) | Free |
+| Open-Meteo | Weather | None | Free |
+| ipify.org | Client IP resolution | None | Free |
+| ipinfo.io | IP geolocation | None | Free (basic) |
 
-**Tech Stack:**
-- **Framework**: React 18.2+
-- **Language**: TypeScript 5.0+
-- **Build Tool**: Vite 5.0+
-- **State Management**: React Hooks
-- **API Client**: Native WebSocket + Fetch
-- **Speech**: Web Speech API
+### 6.4 Verified Frontend File Structure
 
-**Key Libraries:**
-```json
-{
-  "react": "^18.2.0",
-  "react-dom": "^18.2.0",
-  "typescript": "^5.0.0",
-  "vite": "^5.0.0"
-}
-```
-
-**Project Structure:**
 ```
 ui/src/
+├── api/client.ts               # WebSocket client; sends client_ip
 ├── components/
+│   ├── core/Button/
+│   ├── ProfileSettings/
 │   ├── ProfileSetup/
-│   │   ├── ProfileSetup.tsx
-│   │   └── ProfileSetup.css
-│   └── ProfileSettings/
-│       ├── ProfileSettings.tsx
-│       └── ProfileSettings.css
+│   └── voice/VoiceButton/
 ├── hooks/
-│   ├── useVoiceAssistant.ts
-│   └── useUserProfile.ts
-├── api/
-│   └── client.ts
-├── types/
-│   └── userProfile.ts
-├── App.tsx
-└── main.tsx
-```
-
----
-
-### 6.3 Data Models
-
-#### User Profile Model
-```typescript
-interface UserProfile {
-  id: string;
-  firstName: string;
-  lastName?: string;
-  gender: Gender;
-  age?: number;
-  title: Title;
-  address?: string;
-  city: string;
-  state: string;
-  country: string;
-  createdAt: Date;
-  lastUpdatedAt: Date;
-}
-
-type Gender = 'male' | 'female' | 'other' | 'prefer-not-to-say';
-type Title = 'Mr.' | 'Mrs.' | 'Ms.' | 'Miss' | 'Dr.' | 'Master' | '';
-```
-
-#### WebSocket Message Model
-```typescript
-interface Message {
-  type: 'chat' | 'status' | 'response' | 'error' | 'pong';
-  message?: string;
-  status?: 'processing' | 'listening' | 'speaking';
-  success?: boolean;
-  user_profile?: UserProfile;
-  user_agent?: string;
-  timestamp?: number;
-}
-```
-
-#### Location Model
-```python
-@dataclass
-class Location:
-    latitude: float
-    longitude: float
-    address: str
-    city: str
-    state: str
-    country: str
-```
-
----
-
-### 6.4 API Specifications
-
-#### WebSocket API
-
-**Endpoint:** `ws://localhost:8000/ws/{session_id}`
-
-**Client → Server:**
-```json
-{
-  "type": "chat",
-  "message": "What's the weather?",
-  "user_profile": {
-    "id": "user_123",
-    "firstName": "John",
-    "address": "123 Main St",
-    "city": "Erie",
-    "state": "PA"
-  },
-  "user_agent": "Mozilla/5.0...",
-  "timestamp": 1234567890
-}
-```
-
-**Server → Client:**
-```json
-{
-  "type": "response",
-  "message": "The weather in Erie is...",
-  "success": true
-}
-```
-
-#### External APIs
-
-**Weather (Open-Meteo):**
-```
-GET https://api.open-meteo.com/v1/forecast
-?latitude={lat}
-&longitude={lon}
-&current_weather=true
-```
-
-**Restaurants (Zomato):**
-```
-GET https://developers.zomato.com/api/v2.1/search
-?lat={lat}
-&lon={lon}
-&cuisines={cuisine}
-&count=5
-Headers: user-key: {ZOMATO_API_KEY}
-```
-
-**Uber (Deep Links):**
-```
-https://m.uber.com/go/product-selection
-?pickup={JSON}
-&drop[0]={JSON}
+│   ├── useUserProfile.ts
+│   └── useVoiceAssistant.ts    # client IP resolved on mount
+├── styles/
+│   ├── global.css
+│   └── tokens.css
+├── types/userProfile.ts
+├── App.css                     # quickactions compact styles
+└── App.tsx                     # linkifyText + 4 chips
 ```
 
 ---
 
 ## 7. User Interface
 
-### 7.1 Wireframes
+### 7.1 Chat Window
 
-#### Main Screen
+- Draggable, resizable floating window (default 380×480px)
+- Minimize / maximize controls
+- Drag zone isolated from control buttons (pointer capture fix applied)
+- Resize handle attaches `pointermove`/`pointerup` to `document`
+
+### 7.2 Quick-Action Chips
+
+Four chips in a **single compact row** — no wrapping at default width:
+
 ```
-┌─────────────────────────────────────────────────┐
-│  Voice Assistant              [Theme ▼] [⚙️]    │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  [Status: Connected ●]                          │
-│                                                 │
-│  ┌─────────────────────────────────────────┐  │
-│  │ User: What's the weather?               │  │
-│  │                                         │  │
-│  │ Assistant: Currently 72°F and sunny... │  │
-│  │                                         │  │
-│  │ User: Find pizza places                │  │
-│  │                                         │  │
-│  │ Assistant: Here are 5 pizza places...  │  │
-│  └─────────────────────────────────────────┘  │
-│                                                 │
-│  [~~~~~Voice Waveform~~~~~]                    │
-│                                                 │
-│  ┌─────────────────────────────────────────┐  │
-│  │ Type a message...                    [↑]│  │
-│  └─────────────────────────────────────────┘  │
-│                                                 │
-│  [🎤] Push to talk (hold Space)                │
-│                                                 │
-└─────────────────────────────────────────────────┘
+[ ☀ Weather ]  [ 🍴 Restaurants ]  [ 🚗 Ride ]  [ 📅 Events ]
 ```
 
-#### Profile Setup
-```
-┌─────────────────────────────────────────────────┐
-│  Welcome! Let's set up your profile             │
-│                                                 │
-│  Step 1 of 3                                   │
-│  [━━━━━━━━━━          ]                         │
-│                                                 │
-│  What's your name?                             │
-│                                                 │
-│  First Name *                                   │
-│  [John                              ]          │
-│                                                 │
-│  Last Name (optional)                          │
-│  [Doe                               ]          │
-│                                                 │
-│                                                 │
-│                    [Skip]  [Next →]            │
-└─────────────────────────────────────────────────┘
-```
+CSS: `flex-wrap: nowrap; overflow-x: auto` with `.chat-window__quickactions--compact` modifier on buttons (`padding: 5px 9px; font-size: 12px; flex-shrink: 0`).
 
----
+### 7.3 Message Rendering
 
-### 7.2 Themes
+Assistant messages render via `linkifyText()`:
+- `[Event Name](https://ticketmaster.com/...)` → `<a>Event Name</a>` (no brackets, no `)`)
+- `https://bare-url.com` → `<a>https://bare-url.com</a>`
+- All other text rendered as plain text nodes
 
-#### Light Theme
-- Background: #FFFFFF
-- Text: #1A1A1A
-- Primary: #4A90E2
-- Accent: #50C878
+### 7.4 Voice States
 
-#### Dark Theme
-- Background: #1A1A1A
-- Text: #FFFFFF
-- Primary: #4A90E2
-- Accent: #50C878
-
-#### Nord Theme
-- Background: #2E3440
-- Text: #ECEFF4
-- Primary: #88C0D0
-- Accent: #A3BE8C
-
-#### Solarized Theme
-- Background: #002B36
-- Text: #93A1A1
-- Primary: #268BD2
-- Accent: #2AA198
-
-#### High Contrast Theme (WCAG AAA)
-- Background: #000000
-- Text: #FFFFFF
-- Primary: #FFD700
-- Accent: #00FF00
-- Contrast Ratio: 21:1
+| State | Visual |
+|-------|--------|
+| Idle | Blue mic button |
+| Listening | Pulse rings, status dot, "Listening…" title |
+| Processing | Spinner, "Processing…" title |
+| Speaking | Pulse rings, "Speaking…" title, Stop button |
+| Error | Red state, auto-clears after 3 seconds |
 
 ---
 
 ## 8. Data Flow
 
-### 8.1 Complete Flow Diagram
+### 8.1 Voice Query → Response
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Browser
-    participant WebSocket
-    participant FastAPI
-    participant Agent
-    participant Tools
-    participant APIs
-
-    User->>Browser: Speaks/Types query
-    Browser->>Browser: Capture input
-    Browser->>Browser: Load profile from localStorage
-    Browser->>WebSocket: Send {message, user_profile, user_agent}
-    WebSocket->>FastAPI: Forward message
-    FastAPI->>FastAPI: Extract context
-    FastAPI->>Agent: process_request(message, profile, user_agent)
-    Agent->>Agent: Understand intent
-    Agent->>Agent: Select tool
-    Agent->>Tools: execute(params, profile, user_agent)
-    Tools->>Tools: Smart decision (desktop/mobile)
-    Tools->>APIs: Call external API
-    APIs-->>Tools: Return data
-    Tools-->>Agent: Format result
-    Agent-->>FastAPI: Return response
-    FastAPI-->>WebSocket: Send response
-    WebSocket-->>Browser: Deliver message
-    Browser->>Browser: Display + Speak
-    Browser->>User: Show result
+```
+User speaks → Web Speech API → transcript
+    ↓
+useVoiceAssistant.sendMessage(text, profile, userAgent, clientIp)
+    ↓
+WebSocket payload: { message, user_profile, client_ip, user_agent }
+    ↓
+api_server.py: extract client_ip from X-Forwarded-For header
+    ↓
+AgenticAssistant.process_request(message, user_profile, client_ip)
+    ↓
+_extract_location_from_profile → Nominatim geocode → Erie, PA coords
+    ↓
+context_manager.set_location({latitude: 42.13, longitude: -80.09})
+    ↓
+LangChain Agent → tool selection → correct local results
+    ↓
+Response text (markdown links) → WebSocket → linkifyText() → <a> tags → display + speak
 ```
 
----
+### 8.2 Events Query Flow
 
-### 8.2 Uber Smart Pickup Flow
+```
+User: "What events are happening near me?"
+    ↓
+find_local_events(city="Erie", state_code="PA", country_code="US")
+    ↓
+now = datetime.now(UTC); end = now + 30 days
+    ↓
+Ticketmaster API: countryCode=US, stateCode=PA, city=Erie, sort=date,asc
+    ↓
+_parse_events() → name, date, venue, address, category, price, url (no image_url)
+    ↓
+display_limit = max(10, limit) → top 10 events
+    ↓
+LLM formats as markdown: [Event Name](https://ticketmaster.com/...)
+    ↓
+linkifyText() renders clean <a> tags — no trailing )
+```
 
-```mermaid
-flowchart TD
-    A[User: 'Book Uber to mall'] --> B[Agent receives request]
-    B --> C{Check user_agent}
-    C -->|Mobile| D[Use GPS location]
-    C -->|Desktop| E{Check user_profile.address?}
-    E -->|Has address| F[Build complete address]
-    E -->|No address| G[Use city-level location]
-    F --> H[Street + City + State + Country]
-    H --> I[Geocode to coordinates]
-    D --> J[Get GPS coordinates]
-    G --> K[Get city coordinates]
-    I --> L[Generate Uber URL]
-    J --> L
-    K --> L
-    L --> M{Uber URL format}
-    M --> N[addressLine1: Street]
-    M --> O[addressLine2: City, State, Country]
-    M --> P[latitude: coord]
-    M --> Q[longitude: coord]
-    N --> R[Send to user]
-    O --> R
-    P --> R
-    Q --> R
-    R --> S[User clicks link]
-    S --> T[Uber opens with pre-filled locations]
+### 8.3 localStorage Persistence (Action Messages)
+
+```
+LangChain tool (save_restaurant / save_uber_trip)
+    ↓
+ws_sender → {"type": "action", "action": "save_restaurant", "data": {...}}
+    ↓
+Frontend onAction handler → addRestaurantVisit() / addUberTrip()
+    ↓
+useUserProfile → localStorage update
 ```
 
 ---
 
 ## 9. Security & Privacy
 
-### 9.1 Data Privacy
+### 9.1 Data Storage
 
-**Local Storage Only:**
-- User profile stored in browser localStorage
-- No server-side user database
-- User controls all data
-- Can export/delete anytime
+**In browser `localStorage` only:**
+- User profile (name, address, preferences)
+- Saved restaurants and Uber trips
+- Theme preference
 
-**Data Minimization:**
-- Collect only necessary information
-- Optional fields clearly marked
-- No tracking cookies
-- No analytics by default
+**Never stored server-side.** No database. Clearing browser data clears the profile.
 
-**Data Transmission:**
-- User profile sent only during conversations
-- Transmitted over WebSocket (TLS in production)
-- Not logged by default
-- Ephemeral (not persisted on server)
+### 9.2 API Key Management
 
----
-
-### 9.2 API Key Security
-
-**Backend:**
-- API keys in environment variables
-- Never committed to version control
-- Never exposed to client
-- Rotated regularly
-
-**Frontend:**
-- No API keys in frontend code
-- All API calls through backend
-- CORS protection enabled
-- XSS prevention
-
----
+- All API keys in `config/.env` (backend only)
+- `TICKETMASTER_API_KEY` — backend only, never in frontend bundle
+- `.env` in `.gitignore` — never committed
+- Frontend never makes direct API calls to Ticketmaster, OpenRouter, etc.
 
 ### 9.3 Threat Model
 
-**Threats:**
-1. API key exposure → Unauthorized usage
-2. XSS attacks → Data theft
-3. CSRF attacks → Unauthorized actions
-4. Man-in-the-middle → Data interception
-5. DDoS → Service disruption
-
-**Mitigations:**
-1. Environment variables, .gitignore
-2. Input sanitization, CSP headers
-3. CORS configuration, token validation
-4. HTTPS in production
-5. Rate limiting, WAF (future)
+| Threat | Mitigation |
+|--------|-----------|
+| API key exposure | Environment variables only; `.gitignore`; never in frontend |
+| XSS via link rendering | `linkifyText` uses React element creation, not `dangerouslySetInnerHTML` |
+| Wrong city results | Client IP pipeline; profile geocoding; server IP never used |
+| CORS attacks | `allow_origins` restricted to known domains in production |
+| Rate limit abuse | `slowapi` rate limiting (recommended for public deployments) |
+| HTTPS interception | HTTPS required in production; mic access blocked on HTTP |
 
 ---
 
@@ -1073,175 +705,135 @@ flowchart TD
 ### 10.1 Unit Tests
 
 **Backend:**
-- Tool execution logic
-- Agent decision making
-- Context management
-- Geocoding service
-- Device detection
+- Tool execution logic (restaurant, weather, events, uber)
+- `_geocode_city()` retry/backoff on 429
+- `LocationContextAdapter` priority chain
+- `_state_to_code()` normalisation
+- `_parse_events()` — no image_url field, clean URLs
 
 **Frontend:**
-- Component rendering
-- Hook behavior
-- Profile management
-- WebSocket client
-- Voice recognition
-
-**Coverage Target:** 80%
-
----
+- `linkifyText()` — markdown links, bare URLs, no trailing `)`
+- `useVoiceAssistant` — client IP fetch, message payload
+- `useUserProfile` — localStorage read/write
+- Quick-action chip messages map
 
 ### 10.2 Integration Tests
 
 **End-to-End Flows:**
-- Voice input → AI response
-- Profile setup → Data persistence
-- Desktop Uber → Address usage
-- Mobile Uber → GPS usage
-- Theme change → Persistence
-
-**API Integration:**
-- Weather API calls
-- Zomato API calls
-- Geocoding service
-- OpenRouter/OpenAI
-
----
+- Voice input → correct city → correct results
+- Events chip → Ticketmaster → 10 results rendered with clean links
+- Profile setup → address saved → used in next query
+- Desktop Uber → profile address as pickup
+- Mobile Uber → GPS as pickup
+- WebSocket disconnect → auto-reconnect → session resumes
 
 ### 10.3 User Acceptance Testing
 
-**Test Scenarios:**
-1. New user completes profile setup
-2. User asks about weather
-3. User finds restaurants
-4. Desktop user books Uber (uses home address)
-5. Mobile user books Uber (uses GPS)
-6. User changes theme
-7. User edits profile
-8. User resets data
-
-**Success Criteria:**
-- 100% scenario completion
-- <5 minutes per scenario
-- No critical bugs
-- Positive user feedback
+| Scenario | Pass Criteria |
+|----------|--------------|
+| Ask "find restaurants near me" | Returns Erie, PA results (not Columbus, OH) |
+| Click Events chip | Returns ≥10 events for Erie/PA area |
+| Click event link | Opens correct Ticketmaster page (no 404, no trailing `)`) |
+| Ask weather | Returns Erie weather, not server's city |
+| Say "book Uber to downtown" | Generates valid deep link with profile address as pickup |
+| Speak for 25 seconds | Recording still active at 25s, stops at 30s |
+| Disconnect backend | App shows banner, auto-retries, reconnects |
 
 ---
 
 ## 11. Success Metrics
 
-### 11.1 Key Performance Indicators (KPIs)
+### 11.1 KPIs
+
+**Location Accuracy:**
+- Correct city returned: 100% when profile has address
+- Nominatim 429 user-visible errors: 0% (all handled by retry)
+
+**Tool Performance:**
+- Restaurant search success rate: >85% (urban OSM coverage)
+- Events tool success rate: >95% (Ticketmaster reliability)
+- Events results ≥10: 100% (enforced floor)
+
+**Technical:**
+- Agent response P90: <5 seconds
+- WebSocket uptime: >99.5%
+- Link rendering correctness: 100% (no trailing `)`)
 
 **User Engagement:**
-- Daily active users (DAU)
-- Messages per session
-- Session duration
-- Return rate (D7, D30)
-
-**Feature Adoption:**
+- Quick-action chip usage: tracked via backend logs
 - Profile completion rate: >80%
 - Voice usage rate: >60%
-- Tool usage distribution:
-  - Weather: 40%
-  - Restaurants: 30%
-  - Uber: 20%
-  - Other: 10%
-
-**Technical Metrics:**
-- API response time: <3s (p95)
-- Error rate: <1%
-- Uptime: >99.5%
-- WebSocket reconnects: <5%
-
-**User Satisfaction:**
-- Task completion rate: >90%
-- User satisfaction score: >4/5
-- Net Promoter Score: >40
-- Feature request volume
-
----
-
-### 11.2 Success Criteria
-
-**Launch (v1.0):**
-- ✅ All core features working
-- ✅ Test coverage >80%
-- ✅ Documentation complete
-- ✅ Zero critical bugs
-- ✅ Accessibility WCAG AA minimum
-
-**3 Months Post-Launch:**
-- 1000+ total users
-- 50+ daily active users
-- <2s average response time
-- >95% uptime
-- >4.0 user rating
-
-**6 Months Post-Launch:**
-- 5000+ total users
-- 200+ daily active users
-- Feature parity with major assistants
-- Mobile apps launched (iOS/Android)
-- Enterprise customers
 
 ---
 
 ## 12. Release Plan
 
-### 12.1 Version 1.0 (Current)
+### 12.1 Version 1.0 (March 2026) — Initial Release
 
-**Status:** Production Ready  
-**Release Date:** March 2026
+**Status:** Superseded by v2.0
 
-**Features:**
+**Features delivered:**
 - ✅ Voice recognition (push-to-talk + continuous)
 - ✅ AI conversation (OpenRouter/OpenAI)
-- ✅ User profiles with personalization
-- ✅ Weather tool
-- ✅ Restaurant search (Zomato)
-- ✅ Uber booking (smart pickup)
-- ✅ 5 professional themes
-- ✅ WCAG AA accessibility
+- ✅ User profiles with `localStorage` persistence
+- ✅ Weather tool (Open-Meteo, free)
+- ✅ Restaurant search (Overpass/OSM, free)
+- ✅ Uber booking (smart desktop/mobile pickup)
 - ✅ WebSocket real-time communication
 - ✅ LangSmith monitoring
 
 ---
 
-### 12.2 Version 1.1 (Q2 2026)
+### 12.2 Version 2.0 (March 2026) — Current Release
 
-**Planned Features:**
-- [ ] Multi-language support (Spanish, French, German)
-- [ ] Calendar integration (Google Calendar)
-- [ ] Email tool (send/read)
-- [ ] Custom wake word ("Hey Assistant")
-- [ ] Voice profiles (multi-user)
-- [ ] Export conversation history
-- [ ] Improved error recovery
-- [ ] Additional themes
+**Status:** Production Ready ✅
+
+**Features delivered:**
+- ✅ **Location pipeline fix** — profile geocode → client IP → never server IP
+- ✅ **Nominatim 429 retry** — 1.1s sleep + 3× backoff
+- ✅ **Events tool** — Ticketmaster Discovery API v2, top 10, 30-day window
+- ✅ **Events quick-action chip** — 4th chip in compact single-row layout
+- ✅ **Markdown link rendering** — `[text](url)` → proper `<a>` tags, no trailing `)`
+- ✅ **Top-10 enforcement** — `max(10, int(limit))` floor on events
+- ✅ **Image field removal** — no `![Image](url)` in chat
+- ✅ **30-second voice timeout** — `VOICE_TIMEOUT_MS = 30_000`
+- ✅ **Voice timeout constant** — named constant replaces hardcoded value
+- ✅ **Drag/resize bug fixes** — pointer capture isolation, resize on document
 
 ---
 
-### 12.3 Version 2.0 (Q3 2026)
+### 12.3 Version 2.1 (Q2 2026) — Planned
+
+**Planned Features:**
+- [ ] Toast notification system (replaces `alert()`)
+- [ ] FAB (Floating Action Button) consolidating primary CTA
+- [ ] SlideUpInput — mobile thumb-zone optimised text input
+- [ ] SupportButton — help/escalation entry point
+- [ ] Lucide React icon unification
+- [ ] ARIA labels and skip-link improvements
+- [ ] Multi-language support (Spanish, French)
+
+---
+
+### 12.4 Version 3.0 (Q3 2026) — Planned
 
 **Major Features:**
 - [ ] Mobile apps (iOS/Android native)
-- [ ] Smart home integration (Philips Hue, Nest)
-- [ ] Music control (Spotify, Apple Music)
-- [ ] News briefing
-- [ ] Shopping list management
-- [ ] Reminder system
-- [ ] Offline mode (cached responses)
+- [ ] Calendar integration (Google Calendar)
+- [ ] Music control (Spotify deep links)
+- [ ] PostgreSQL for preference persistence (replace localStorage)
+- [ ] Redis caching for Nominatim/Overpass/Ticketmaster responses
 - [ ] Progressive Web App (PWA)
+- [ ] News briefing tool
 
 ---
 
-### 12.4 Version 3.0 (Q4 2026)
+### 12.5 Version 4.0 (Q4 2026) — Planned
 
 **Enterprise Features:**
-- [ ] Custom AI model training
-- [ ] Plugin marketplace
-- [ ] Team collaboration
-- [ ] Admin dashboard
-- [ ] Usage analytics
+- [ ] Multi-user authentication
+- [ ] Plugin/tool marketplace
+- [ ] Admin dashboard + analytics
 - [ ] White-label options
 - [ ] On-premise deployment
 - [ ] SSO integration
@@ -1250,51 +842,25 @@ flowchart TD
 
 ## 13. Future Roadmap
 
-### 13.1 Short-Term (3-6 months)
+### Short-Term (0–3 months)
+- UX audit items: Toast, FAB, SlideUpInput, SupportButton
+- Lucide React icon unification
+- ARIA/accessibility improvements
+- Rate limiting middleware (`slowapi`) for production
 
-**User-Facing:**
-- Multi-language support
-- More integrations (calendar, email)
-- Voice customization
-- Improved personalization
-
-**Technical:**
-- Performance optimization
-- Better error handling
-- Enhanced monitoring
-- Automated testing
-
----
-
-### 13.2 Medium-Term (6-12 months)
-
-**User-Facing:**
+### Medium-Term (3–9 months)
 - Native mobile apps
-- Smart home control
-- Media playback
-- Proactive suggestions
+- Smart home integration
+- Microservices for heavy tools
+- PostgreSQL preferences database
+- Redis response caching
 
-**Technical:**
-- Microservices architecture
-- Redis for session management
-- PostgreSQL for analytics
+### Long-Term (9+ months)
+- Custom wake word support
+- Edge/offline capability
+- Plugin marketplace
 - Kubernetes deployment
-
----
-
-### 13.3 Long-Term (12+ months)
-
-**User-Facing:**
-- Custom wake words
-- Emotion detection
-- Context-aware suggestions
-- Marketplace for plugins
-
-**Technical:**
-- Edge deployment
-- Custom AI models
-- Blockchain for privacy
-- Federated learning
+- Federated preference sync
 
 ---
 
@@ -1302,71 +868,58 @@ flowchart TD
 
 ### Appendix A: Glossary
 
-- **Agent**: AI system that uses tools to accomplish tasks
-- **Tool**: Function that the agent can call (weather, Uber, etc.)
-- **Profile**: User's personal information and preferences
-- **Session**: Single conversation instance
-- **Context**: Information about current state (location, conversation history)
-- **Geocoding**: Converting address to coordinates
-- **Deep Link**: URL that opens app with pre-filled data
-- **WCAG**: Web Content Accessibility Guidelines
-- **TTL**: Time To Live (cache duration)
-
----
+| Term | Definition |
+|------|-----------|
+| Agent | AI system using LangChain to select and call tools |
+| Tool | Python function callable by the agent (weather, events, etc.) |
+| Profile | User's personal info stored in browser localStorage |
+| Session | Single WebSocket conversation instance |
+| Context | ContextManager state — location, history, preferences |
+| Geocoding | Converting address string → lat/lon coordinates |
+| Deep Link | URL that opens an app with pre-filled data |
+| `client_ip` | Browser's real public IP, fetched via `api.ipify.org` |
+| `LocationContextAdapter` | Wraps ContextManager + LocationService; enforces location priority chain |
+| Nominatim | Free OSM geocoding service; max 1 req/sec |
+| Overpass API | Free OSM query API; used for restaurant search |
+| `linkifyText` | Frontend function converting markdown links to `<a>` tags |
 
 ### Appendix B: References
 
-**Technical Documentation:**
-- FastAPI: https://fastapi.tiangolo.com
-- LangChain: https://docs.langchain.com
-- React: https://react.dev
-- Web Speech API: https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API
+**Internal Documentation:**
+- `CLAUDE.md` — complete technical reference (v6.0)
+- `ARCHITECTURE.md` — system diagrams and component detail
+- `SIMPLE_GUIDE.md` — user-facing plain-English guide
+- `README.md` — developer quickstart
 
-**APIs:**
-- OpenRouter: https://openrouter.ai/docs
+**External APIs:**
+- Ticketmaster Discovery API v2: https://developer.ticketmaster.com/products-and-docs/apis/discovery-api/v2/
+- Overpass API: https://overpass-api.de/
+- Nominatim: https://nominatim.org/release-docs/latest/api/Search/
 - Open-Meteo: https://open-meteo.com/en/docs
-- Zomato: https://developers.zomato.com/documentation
-- Nominatim: https://nominatim.org/release-docs/latest/api/Overview/
-
-**Standards:**
-- WCAG 2.1: https://www.w3.org/WAI/WCAG21/quickref/
-- WebSocket Protocol: https://datatracker.ietf.org/doc/html/rfc6455
-
----
+- LangChain: https://docs.langchain.com
+- FastAPI: https://fastapi.tiangolo.com
+- Web Speech API: https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API
 
 ### Appendix C: Change Log
 
-**v1.0.0 (March 2026)**
-- Initial production release
-- All core features implemented
-- Smart Uber pickup (desktop/mobile aware)
-- Complete address building fix
-- User profile with address field
-- React Ref fix for profile data flow
-
-**v0.9.0 (February 2026)**
-- Beta release
-- Profile system added
-- Theme selector implemented
-- Accessibility improvements
-
-**v0.5.0 (January 2026)**
-- Alpha release
-- Basic voice recognition
-- Weather and restaurant tools
-- Initial UI
+| Version | Date | Key Changes |
+|---------|------|-------------|
+| v2.0.0 | Mar 2026 | Location pipeline fix (profile→geocode→client IP); Events tool (Ticketmaster); markdown link rendering fix; 4-chip compact row; top-10 enforcement; image field removed; 30s voice timeout; drag/resize fixes |
+| v1.0.0 | Mar 2026 | Initial production release: voice, weather, restaurants, Uber, profiles, WebSocket |
+| v0.9.0 | Feb 2026 | Beta: profile system, theme selector, accessibility |
+| v0.5.0 | Jan 2026 | Alpha: basic voice recognition, weather, restaurant tools |
 
 ---
 
-**Document Version:** 1.0.0  
-**Last Updated:** March 7, 2026  
+**Document Version:** 2.0.0
+**Last Updated:** March 2026
 **Next Review:** June 2026
 
 ---
 
 **Approval Signatures:**
 
-Product Manager: ________________  
-Engineering Lead: ________________  
-Design Lead: ________________  
+Product Manager: ________________
+Engineering Lead: ________________
+Design Lead: ________________
 QA Lead: ________________
