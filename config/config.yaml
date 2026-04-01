@@ -6,8 +6,8 @@ agent:
   
   # Model selection
   # For OpenAI: "gpt-4", "gpt-3.5-turbo"
-  # For OpenRouter: "anthropic/claude-3-sonnet", "openai/gpt-4", "meta-llama/llama-3-70b-instruct"
-  model: "openai/gpt-4"
+  # For OpenRouter: "deepseek/deepseek-v3.2-exp", "anthropic/claude-3-sonnet", "openai/gpt-4", "meta-llama/llama-3-70b-instruct"
+  model: "deepseek/deepseek-v3.2-exp"
   
   # Optional: Custom OpenRouter base URL (leave empty for default)
   openrouter_base_url: "https://openrouter.ai/api/v1"
